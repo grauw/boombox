@@ -5,6 +5,7 @@ all:
 	java -jar tools/glass.jar src/SoundStarROM.asm bin/soundstar.rom gen/soundstar.sym
 	java -jar tools/glass.jar src/BoomboxROM.asm bin/boombox.rom gen/boombox.sym
 	java -jar tools/glass.jar src/BoomboxCOM.asm bin/boombox.com
+	java -jar tools/glass.jar src/ETCPlayerSAA.asm bin/etcplayer.saa
 
 dist: all
 	cp README.md bin/
