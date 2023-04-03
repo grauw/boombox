@@ -62,15 +62,17 @@ Module1_data:
 	; INCBIN "../res/Pyramex - Electro-1 (2012).cop", 04B3H
 	; INCBIN "../res/Pyramex - Electro-2 (2022).saa", 04B3H
 	; INCBIN "../res/Pyramex - Electro-3 (2022).saa", 04B3H
-	INCBIN "../res/Pyramex - Electron (2018).etc", 04B3H
+	; INCBIN "../res/Pyramex - Electron (2018).etc", 04B3H
 	; INCBIN "../res/Pyramex - High Color (2018) (speccy.pl party 2018.1, 1).cop", 04B3H
 	; INCBIN "../res/Pyramex - Seventh (2018).cop", 04B3H
+	INCBIN "../res/Pyramex - Vexx Ingame (2005).etc"
 
 	SECTION RAM
 
 ROM_boombox:
 	Boombox
 
+ETCPlayer_BUGFIX: equ 1
 ETCPlayer_SAA_ADDRESS_PORT: equ SoundStar_ADDRESS
 ETCPlayer_SAA_MODE_REG: equ c
 

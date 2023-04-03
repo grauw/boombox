@@ -332,7 +332,11 @@ ETCChannel_TickEffects:
 	DEC (IX + ETCChannel.delay_next_note)     ; #81A7 ;  5   ; #DD,#35,#13
 	RET P           ; #81AA ;      ; #F0
 	LD A,B          ; #81AB ; x    ; #78
+	IF ETCPlayer_BUGFIX
+	CP #04          ; Fixes noise bug in Vexx Ingame
+	ELSE
 	CP #03          ; #81AC ;      ; #FE,#03
+	ENDIF
 	LD HL,ETCPlayer_registers.envelope0   ; #81AE ; !    ; #21,#EB,#83
 	JR NC,ETCChannel_TickEffects_Envelope0   ; #81B1 ; 0    ; #30,#01
 	INC HL          ; #81B3 ; #    ; #23
