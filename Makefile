@@ -2,8 +2,8 @@ COPY_TARGET = /Volumes/MSXDOS2
 
 all:
 	mkdir -p gen bin
-	cd tools && node generate.js
-	java -jar tools/glass.jar src/SoundStarROM.asm bin/soundstar.rom gen/soundstar.sym
+	node tools/generate.js res/resources.json
+	java -jar tools/glass.jar -I gen src/SoundStarROM.asm bin/soundstar.rom gen/soundstar.sym
 	java -jar tools/glass.jar src/ETCPlayerSAA.asm bin/etcplayer.saa
 
 dist: all

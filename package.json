@@ -10,7 +10,8 @@
   },
   "type": "module",
   "dependencies": {
-    "png-js": "1.0.0"
+    "png-js": "1.0.0",
+    "lz4": "0.6.5"
   },
   "private": true
 }

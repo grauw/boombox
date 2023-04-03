@@ -1,0 +1,6 @@
+{
+	"graphics": {
+		"reels": "reels.png",
+		"target": "../gen/graphics.lz4"
+	}
+}

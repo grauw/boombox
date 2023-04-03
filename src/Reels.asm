@@ -25,10 +25,6 @@ Reels_Construct:
 	ld b,a
 	ld c,1
 	call WRTVDP
-	ld hl,Reels_spritePatterns
-	ld de,(GRPPAT)
-	ld bc,256 * 8
-	call LDIRVM
 	call Reels_Draw
 	ret
 
@@ -71,6 +67,3 @@ Reels_Render:
 	ld bc,33
 	call LDIRVM
 	ret
-
-Reels_spritePatterns:
-	INCBIN "../gen/reels.bin"
