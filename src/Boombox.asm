@@ -42,6 +42,8 @@ Boombox_Construct:
 	call LDIRVM
 	pop ix
 	push ix
+	ld hl,Module_playlist
+	call Boombox_GetLZ4Decoder_DE
 	call Boombox_GetPlayer
 	call Player_Construct
 	pop ix
@@ -84,6 +86,16 @@ Boombox_GetLZ4Decoder:
 	ret
 
 ; ix = this
+; de <- LZ4 decoder
+Boombox_GetLZ4Decoder_DE:
+	push ix
+	ld de,Boombox.lz4Decoder
+	add ix,de
+	ex (sp),ix
+	pop de
+	ret
+
+; ix = this
 ; ix <- player
 Boombox_GetPlayer:
 	ld bc,Boombox.player
@@ -118,8 +130,8 @@ Boombox_GetVUMeters:
 Boombox_Run: PROC
 	push ix
 	call Boombox_GetPlayer
-	ld hl,Module1_data
-	call Player_Initialize
+	ld a,5
+	call Player_Load
 	call Player_Play
 	pop ix
 	set Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)

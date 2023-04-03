@@ -14,13 +14,15 @@ async function generate() {
 }
 
 class Resources {
-	constructor(graphics) {
+	constructor(graphics, modules) {
 		this.graphics = graphics;
+		this.modules = modules;
 	}
 
 	async generate() {
 		await Promise.all([
-			this.graphics.generate()
+			this.graphics.generate(),
+			...this.modules.map(module => module.generate())
 		]);
 	}
 
@@ -31,7 +33,13 @@ class Resources {
 			new Graphics(
 				path.resolve(path.dirname(resourcesPath), json.graphics.reels),
 				path.resolve(path.dirname(resourcesPath), json.graphics.target)
-			)
+			),
+			json.modules.map(jsonModule => {
+				return new Module(
+					path.resolve(path.dirname(resourcesPath), jsonModule.source),
+					path.resolve(path.dirname(resourcesPath), jsonModule.target)
+				)
+			})
 		);
 	}
 }
@@ -75,6 +83,30 @@ class Graphics {
 		}
 
 		graphics[0x1800] = 208;  // hide sprites
+	}
+}
+
+class Module {
+	constructor(source, target) {
+		this.source = source;
+		this.target = target;
+	}
+
+	async generate() {
+		let data = await fs.promises.readFile(this.source);
+
+		if (data[0] == 0x21 && data[1] == 0xB3 && data[2] == 0x84) {
+			data = data.subarray(0x4B3);
+		}
+
+		if (data[0x0A] != 0x45 || data[0x0B] != 0x54 || data[0x0C] != 0x72 || data[0x0D] != 0x61 ||
+			data[0x0E] != 0x63 || data[0x0F] != 0x6B || data[0x10] != 0x65 || data[0x11] != 0x72) {
+			throw new Error("Not an ETracker file");
+		} else {
+			data.fill(0, 0x0A, 0x1E);  // Clear ETracker signature
+		}
+
+		await fs.promises.writeFile(this.target, compress(data));
 	}
 }
 

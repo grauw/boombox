@@ -2,5 +2,31 @@
 	"graphics": {
 		"reels": "reels.png",
 		"target": "../gen/graphics.lz4"
-	}
+	},
+	"modules": [
+		{
+			"source": "Pyramex - Electro-1 (2012).cop",
+			"target": "../gen/electro1.lz4"
+		},
+		{
+			"source": "Pyramex - Electro-3 (2022).saa",
+			"target": "../gen/electro3.lz4"
+		},
+		{
+			"source": "Pyramex - Electron (2018).etc",
+			"target": "../gen/electron.lz4"
+		},
+		{
+			"source": "Pyramex - High Color (2018) (speccy.pl party 2018.1, 1).cop",
+			"target": "../gen/highcolor.lz4"
+		},
+		{
+			"source": "Pyramex - Seventh (2018).cop",
+			"target": "../gen/seventh.lz4"
+		},
+		{
+			"source": "Pyramex - Vexx Ingame (2005).etc",
+			"target": "../gen/vexxingame.lz4"
+		}
+	]
 }
