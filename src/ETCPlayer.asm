@@ -169,6 +169,8 @@ ETCPlayer_Tick_link_7: equ $ - 1
 	CALL SwapNibbleA     ; #80FD ;  W   ; #CD,#57,#81
 	OR B            ; #8100 ;      ; #B0
 	LD (ETCPlayer_registers.octave10),A  ; #8101 ; 2    ; #32,#E3,#83
+
+	IF ETCPlayer_SAA_OUTPUT
 	; unmute
 	LD BC,ETCPlayer_SAA_ADDRESS_PORT     ; #8104 ;      ; #01,#FF,#01
 	LD DE,#1C01     ; #8107 ;      ; #11,#01,#1C
@@ -188,6 +190,9 @@ ETCPlayer_Tick_Link_68:
 	RET M           ; #811C ;      ; #F8
 	DEC HL          ; #811D ; +    ; #2B
 	JR ETCPlayer_Tick_Link_68      ; #811E ;      ; #18,#F4
+	ELSE
+	ret
+	ENDIF
 
 ETCChannel_noteFrequency:
 	db #05          ; #8120 ;      ; #05
@@ -749,12 +754,14 @@ ETCPlayer_Initialize_ChannelInitLoop:
 	add ix,de       ; #8452 ;      ; #DD,#19
 	djnz ETCPlayer_Initialize_ChannelInitLoop   ; #8454 ;      ; #10,#DB
 
+	IF ETCPlayer_SAA_OUTPUT
 	; mute & reset
 	ld de,#1C02     ; #8456 ;      ; #11,#02,#1C
 	ld bc,ETCPlayer_SAA_ADDRESS_PORT     ; #8459 ;      ; #01,#FF,#01
 	out (c),d       ; #845C ;  Q   ; #ED,#51
 	dec ETCPlayer_SAA_MODE_REG           ; #845E ;      ; #05
 	out (c),e       ; #845F ;  Y   ; #ED,#59
+	ENDIF
 
 link_50:
 	LD HL,#0000     ; #8461 ; !    ; #21,#00,#00

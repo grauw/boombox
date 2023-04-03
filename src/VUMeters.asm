@@ -8,10 +8,15 @@ VUMeters_PATTERN_RIGHT: equ 05H
 VUMeters_nameTableBuffer: equ 0D000H
 
 VUMeters: MACRO
+	player:
+		dw 0
 	ENDM
 
+; de = player
 ; ix = this
 VUMeters_Construct:
+	ld (ix + VUMeters.player + 0),e
+	ld (ix + VUMeters.player + 1),d
 	ld hl,VUMeters_patterns
 	ld de,(GRPCGP)
 	set 3,d
@@ -39,8 +44,23 @@ VUMeters_Destruct:
 	ret
 
 ; ix = this
+; ix <- player
+VUMeters_GetPlayer:
+	ld c,(ix + VUMeters.player + 0)
+	ld b,(ix + VUMeters.player + 1)
+	push bc
+	pop ix
+	ret
+
+; ix = this
 ; iy = SAA1099 registers mirror
 VUMeters_Tick: PROC
+	push ix
+	call VUMeters_GetPlayer
+	call Player_GetSAARegisters
+	push de
+	pop iy
+	pop ix
 	call VUMeters_GetEnabledChannels
 	ld hl,VUMeters_nameTableBuffer + 1 * 32 + 10
 	ld b,6

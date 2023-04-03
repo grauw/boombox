@@ -10,6 +10,8 @@ Boombox: MACRO
 		db 0
 	lz4Decoder:
 		LZ4Decoder
+	player:
+		Player
 	reels:
 		Reels
 	vuMeters:
@@ -40,10 +42,15 @@ Boombox_Construct:
 	call LDIRVM
 	pop ix
 	push ix
+	call Boombox_GetPlayer
+	call Player_Construct
+	pop ix
+	push ix
 	call Boombox_GetReels
 	call Reels_Construct
 	pop ix
 	push ix
+	call Boombox_GetPlayer_DE
 	call Boombox_GetVUMeters
  	call VUMeters_Construct
 	pop ix
@@ -60,6 +67,10 @@ Boombox_Destruct:
 	call Reels_Destruct
 	pop ix
 	push ix
+	call Boombox_GetPlayer
+	call Player_Destruct
+	pop ix
+	push ix
 	call Boombox_GetLZ4Decoder
 	call LZ4Decoder_Destruct
 	pop ix
@@ -70,6 +81,23 @@ Boombox_Destruct:
 Boombox_GetLZ4Decoder:
 	ld bc,Boombox.lz4Decoder
 	add ix,bc
+	ret
+
+; ix = this
+; ix <- player
+Boombox_GetPlayer:
+	ld bc,Boombox.player
+	add ix,bc
+	ret
+
+; ix = this
+; de <- player
+Boombox_GetPlayer_DE:
+	push ix
+	ld de,Boombox.player
+	add ix,de
+	ex (sp),ix
+	pop de
 	ret
 
 ; ix = this
@@ -87,33 +115,28 @@ Boombox_GetVUMeters:
  	ret
 
 ; ix = this
-Boombox_Run:
+Boombox_Run: PROC
 	push ix
+	call Boombox_GetPlayer
 	ld hl,Module1_data
-	call ETCPlayer_Initialize
+	call Player_Initialize
+	call Player_Play
 	pop ix
 	set Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
-Boombox_Loop_Outer:
-	ld b,5
-	ld hl,IDBYT0
-	bit 7,(hl)
-	jr nz,Boombox_Loop
-	call Boombox_WaitTick
-Boombox_Loop:
-	push bc
+Loop:
 	call Boombox_Tick
 	call Boombox_WaitTick
 	call Boombox_Render
 	call CHSNS
-	pop bc
 	ret nz
-	djnz Boombox_Loop
-	jr Boombox_Loop_Outer
+	jr Loop
+	ENDP
 
 ; ix = this
 Boombox_Tick:
 	push ix
-	call ETCPlayer_Tick
+	call Boombox_GetPlayer
+	call Player_Tick
 	pop ix
 	push ix
 	call Boombox_GetReels
@@ -121,7 +144,6 @@ Boombox_Tick:
 	pop ix
 	push ix
 	call Boombox_GetVUMeters
-	ld iy,ETCPlayer_registers
 	call VUMeters_Tick
 	pop ix
 	ret
@@ -154,6 +176,10 @@ Loop:
 
 ; ix = this
 Boombox_Render:
+	push ix
+	call Boombox_GetPlayer
+	call Player_Render
+	pop ix
 	push ix
 	call Boombox_GetReels
 	call Reels_Render

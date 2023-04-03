@@ -58,6 +58,7 @@ Loop:
 	INCLUDE "Memory.asm"
 	INCLUDE "Boombox.asm"
 	INCLUDE "LZ4Decoder.asm"
+	INCLUDE "Player.asm"
 	INCLUDE "Reels.asm"
 	INCLUDE "VUMeters.asm"
 
@@ -76,8 +77,7 @@ ROM_boombox:
 	Boombox
 
 ETCPlayer_BUGFIX: equ 1
-ETCPlayer_SAA_ADDRESS_PORT: equ SoundStar_ADDRESS
-ETCPlayer_SAA_MODE_REG: equ c
+ETCPlayer_SAA_OUTPUT: equ 0
 
 	INCLUDE "ETCPlayer.asm"
 
