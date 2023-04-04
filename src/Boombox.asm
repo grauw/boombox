@@ -8,6 +8,8 @@ Boombox: MACRO
 		db 0
 	lastJiffy:
 		db 0
+	reels:
+		Reels
 	vuMeters:
 		VUMeters
 	ENDM
@@ -28,6 +30,10 @@ Boombox_Construct:
 	ld (FORCLR),a
 	ld (BAKCLR),hl
 	push ix
+	call Boombox_GetReels
+	call Reels_Construct
+	pop ix
+	push ix
 	call Boombox_GetVUMeters
  	call VUMeters_Construct
 	pop ix
@@ -39,6 +45,17 @@ Boombox_Destruct:
 	call Boombox_GetVUMeters
 	call VUMeters_Destruct
 	pop ix
+	push ix
+	call Boombox_GetReels
+	call Reels_Destruct
+	pop ix
+	ret
+
+; ix = this
+; ix <- reels
+Boombox_GetReels:
+	ld bc,Boombox.reels
+	add ix,bc
 	ret
 
 ; ix = this
@@ -78,6 +95,10 @@ Boombox_Tick:
 	call ETCPlayer_Tick
 	pop ix
 	push ix
+	call Boombox_GetReels
+	call Reels_Tick
+	pop ix
+	push ix
 	call Boombox_GetVUMeters
 	ld iy,ETCPlayer_registers
 	call VUMeters_Tick
@@ -112,6 +133,10 @@ Loop:
 
 ; ix = this
 Boombox_Render:
+	push ix
+	call Boombox_GetReels
+	call Reels_Render
+	pop ix
 	push ix
 	call Boombox_GetVUMeters
 	call VUMeters_Render

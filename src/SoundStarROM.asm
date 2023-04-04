@@ -57,6 +57,7 @@ Loop:
 	INCLUDE "System.asm"
 	INCLUDE "Memory.asm"
 	INCLUDE "Boombox.asm"
+	INCLUDE "Reels.asm"
 	INCLUDE "VUMeters.asm"
 
 Module1_data:

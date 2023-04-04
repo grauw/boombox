@@ -1,0 +1,16 @@
+{
+  "name": "soundstar",
+  "version": "0.0.0",
+  "description": "SoundStar ROM",
+  "author": "Laurens Holst",
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "hg",
+    "url": "https://hg.sr.ht/~grauw/soundstar"
+  },
+  "type": "module",
+  "dependencies": {
+    "png-js": "1.0.0"
+  },
+  "private": true
+}
