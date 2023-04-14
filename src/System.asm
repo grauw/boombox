@@ -1,3 +1,7 @@
+; hl = jump address
+System_JumpHL:
+	jp hl
+
 ; Workaround for LD A,I / LD A,R lying to us if an interrupt occurs during the
 ; instruction. We detect this by examining if (sp - 1) was overwritten.
 ; f: pe <- interrupts enabled

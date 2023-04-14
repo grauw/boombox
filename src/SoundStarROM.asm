@@ -26,16 +26,8 @@ page2:
 
 ROM_Main:
 	ei
-	ld hl,RAM_source
-	ld de,RAM_destination
-	ld bc,RAM_size
-	ldir
 	call Reset
-	ld ix,ROM_boombox
-	call Boombox_Construct
-	call Boombox_Run
-	call Boombox_Destruct
-	jp Reset
+	jr ROM_Boombox
 
 Reset: PROC
 	ld a,1CH
@@ -50,6 +42,52 @@ Loop:
 	xor a
 	out (SoundStar_DATA),a
 	djnz Loop
+	ret
+	ENDP
+
+ROM_Boombox:
+	call ROM_SelectRAM
+	ret nc
+	ld hl,RAM_source
+	ld de,RAM_destination
+	ld bc,RAM_size
+	ldir
+	ld ix,ROM_boombox
+	call Boombox_Construct
+	call Boombox_Run
+	call Boombox_Destruct
+	jp Reset
+
+; f <- c: found
+ROM_SelectRAM:
+	call ROM_DetectRAMInCurrentSlot
+	ret c
+	ld hl,ROM_DetectRAMInSlot
+	jp Memory_SearchSlots
+
+; a = slot ID
+; f <- c: found
+ROM_DetectRAMInSlot:
+	ld h,80H
+	call Memory_SetSlot
+	jr ROM_DetectRAMInCurrentSlot
+
+; f <- c: found
+ROM_DetectRAMInCurrentSlot: PROC
+	ld hl,8000H
+	ld b,4
+Loop:
+	ld a,(hl)
+	cpl
+	ld (hl),a
+	cp (hl)
+	cpl
+	ld (hl),a
+	scf
+	ccf
+	ret nz
+	djnz Loop
+	scf
 	ret
 	ENDP
 

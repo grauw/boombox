@@ -27,3 +27,6 @@ run3: all
 
 run4: all
 	openmsx -machine Sony_HB-75 -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl
+
+run5: all
+	openmsx -machine Sony_HB-10 -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -ext ram16k -script openmsx.tcl

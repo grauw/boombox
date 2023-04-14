@@ -66,3 +66,44 @@ Memory_SetSlot:
 	call ENASLT
 	ei
 	ret
+
+; Search all slots and subslots for a match.
+; Invoke Continue to continue searching where a previous search left off.
+; hl = detection routine (receives a = slot ID, can modify all)
+; f <- c: found
+; a <- slot number
+; Modifies: af, bc, de
+Memory_SearchSlots: PROC
+	ld a,0
+PrimaryLoop:
+	ex de,hl
+	ld hl,EXPTBL
+	ld b,0
+	ld c,a
+	add hl,bc
+	ld a,(hl)
+	ex de,hl
+	and 10000000B
+	or c
+SecondaryLoop:
+	push af
+	push hl
+	call System_JumpHL
+	pop hl
+	jp c,Found
+	pop af
+Continue:
+	add a,00000100B
+	jp p,NextPrimary
+	bit 4,a
+	jp z,SecondaryLoop
+NextPrimary:
+	inc a
+	and 00000011B
+	ret z  ; not found
+	jp PrimaryLoop
+Found:
+	pop af
+	scf
+	ret
+	ENDP
