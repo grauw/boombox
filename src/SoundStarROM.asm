@@ -57,6 +57,7 @@ Loop:
 	INCLUDE "System.asm"
 	INCLUDE "Memory.asm"
 	INCLUDE "Boombox.asm"
+	INCLUDE "VUMeters.asm"
 
 Module1_data:
 	; INCBIN "../res/Pyramex - Electro-1 (2012).cop", 04B3H

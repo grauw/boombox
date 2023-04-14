@@ -1,0 +1,173 @@
+;
+;
+;
+VUMeters_PATTERN_BLANK: equ 00H
+VUMeters_PATTERN_LEFT: equ 01H
+VUMeters_PATTERN_RIGHT: equ 05H
+
+VUMeters_nameTableBuffer: equ 0D000H
+
+VUMeters: MACRO
+	ENDM
+
+; ix = this
+VUMeters_Construct:
+	ld hl,VUMeters_patterns
+	ld de,(GRPCGP)
+	set 3,d
+	ld bc,16 * 8
+	call LDIRVM
+	ld hl,VUMeters_colors
+	ld de,(GRPCOL)
+	set 3,d
+	ld bc,16 * 8
+	call LDIRVM
+	ld hl,VUMeters_nameTableBuffer
+	ld de,VUMeters_nameTableBuffer + 1
+	ld bc,256 - 1
+	ld (hl),0
+	ldir
+	ld hl,VUMeters_nameTableBuffer
+	ld de,(GRPNAM)
+	set 0,d
+	ld bc,256
+	call LDIRVM
+	ret
+
+; ix = this
+VUMeters_Destruct:
+	ret
+
+; ix = this
+; iy = SAA1099 registers mirror
+VUMeters_Tick: PROC
+	call VUMeters_GetEnabledChannels
+	ld hl,VUMeters_nameTableBuffer + 1 * 32 + 10
+	ld b,6
+Loop:
+	srl c
+	push bc
+	ld a,(iy)
+	jr c,Continue
+	xor a
+Continue:
+	push af
+	and 00FH
+	ld d,VUMeters_PATTERN_LEFT
+	call VUMeters_DrawVolume
+	pop af
+	and 0F0H
+	rrca
+	rrca
+	rrca
+	rrca
+	ld d,VUMeters_PATTERN_RIGHT
+	call VUMeters_DrawVolume
+	pop bc
+	inc iy
+	djnz Loop
+	ret
+	ENDP
+
+; ix = this
+; iy = SAA1099 registers mirror
+; c <- enabled channel bits
+VUMeters_GetEnabledChannels: PROC
+	ld a,(iy + 20)
+	or (iy + 21)
+	ld c,a
+	bit 7,(iy + 24)
+	jr z,NoEnvelope0
+	set 2,c
+NoEnvelope0:
+	bit 7,(iy + 25)
+	jr z,NoEnvelope1
+	set 5,c
+NoEnvelope1:
+	ret
+	ENDP
+
+; a = volume (0-15)
+; d = base pattern number
+; hl = name table buffer location
+; ix = this
+; hl <- next name table buffer location
+VUMeters_DrawVolume: PROC
+	ld c,a
+	ld b,4
+Loop:
+	push bc
+	dec b
+	rlc b
+	rlc b
+	inc b
+	ld a,c
+	sub b
+	jr nc,NotEmpty
+	ld a,VUMeters_PATTERN_BLANK
+	jr Continue
+NotEmpty:
+	cp 4
+	jr c,NotFull
+	ld a,3
+NotFull:
+	add a,d
+	jr Continue
+Continue:
+	ld (hl),a
+	ld bc,32
+	add hl,bc
+	pop bc
+	djnz Loop
+	ld bc,4 * -32 + 1
+	add hl,bc
+	ret
+	ENDP
+
+; ix = this
+VUMeters_Render:
+	ld hl,VUMeters_nameTableBuffer
+	ld de,(GRPNAM)
+	set 0,d
+	ld bc,256
+	call LDIRVM
+	ret
+
+VUMeters_patterns:
+	db 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B
+	db 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00111110B, 00000000B
+	db 00000000B, 00000000B, 00000000B, 00000000B, 00111110B, 00000000B, 00111110B, 00000000B
+	db 00000000B, 00000000B, 00111110B, 00000000B, 00111110B, 00000000B, 00111110B, 00000000B
+	db 00111110B, 00000000B, 00111110B, 00000000B, 00111110B, 00000000B, 00111110B, 00000000B
+	db 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 11111000B, 00000000B
+	db 00000000B, 00000000B, 00000000B, 00000000B, 11111000B, 00000000B, 11111000B, 00000000B
+	db 00000000B, 00000000B, 11111000B, 00000000B, 11111000B, 00000000B, 11111000B, 00000000B
+	db 11111000B, 00000000B, 11111000B, 00000000B, 11111000B, 00000000B, 11111000B, 00000000B
+
+	db 01110111B, 00000000B, 01110111B, 00000000B, 01110111B, 00000000B, 01110111B, 00000000B
+	db 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B
+	db 01110000B, 00000000B, 01110000B, 00000000B, 01110000B, 00000000B, 01110000B, 00000000B
+	db 00000111B, 00000000B, 00000111B, 00000000B, 00000111B, 00000000B, 00000111B, 00000000B
+	db 01110111B, 00000000B, 01110111B, 00000000B, 01110111B, 00000000B, 01110111B, 00000000B
+	db 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B, 00000000B
+	db 01110000B, 00000000B, 01110000B, 00000000B, 01110000B, 00000000B, 01110000B, 00000000B
+	db 00000111B, 00000000B, 00000111B, 00000000B, 00000111B, 00000000B, 00000111B, 00000000B
+	db 01110111B, 00000000B, 01110111B, 00000000B, 01110111B, 00000000B, 01110111B, 00000000B
+
+VUMeters_colors:
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
+	db 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H, 0F1H
