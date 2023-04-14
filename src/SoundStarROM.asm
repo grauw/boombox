@@ -18,7 +18,8 @@ page2:
 
 	db "AB"
 	dw ROM_Main
-	dw 0, 0, 0, 0, 0, 0
+	dw ROM_CallEntry
+	dw 0, 0, 0, 0, 0
 
 	db "SAA1099", 0  ; ID
 	dw 0001H         ; Version
@@ -89,6 +90,46 @@ Loop:
 	djnz Loop
 	scf
 	ret
+	ENDP
+
+; hl = BASIC code pointer
+; hl <- BASIC code pointer
+ROM_CallEntry: PROC
+	ei
+	push hl
+	ld hl,PROCNM
+	ld de,callName
+	ld bc,callNameLength
+Loop:
+	ld a,(de)
+	inc de
+	cpi
+	jr nz,NoMatch
+	jp pe,Loop
+	ld a,(hl)
+	and a
+	jr z,Match
+NoMatch:
+	pop hl
+	scf
+	ret
+Match:
+	call ROM_Boombox
+	pop hl
+	ld hl,(TXTTAB)
+	dec hl
+	push hl
+	ld (hl),0  ; clear program
+	inc hl     ; (anything there before will be corrupted)
+	ld (hl),0
+	inc hl
+	ld (hl),0
+	pop hl
+	and a
+	ret
+callName:
+	db "SOUNDSTAR"
+callNameLength: equ $ - callName
 	ENDP
 
 	INCLUDE "BIOS.asm"
