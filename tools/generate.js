@@ -259,8 +259,12 @@ class Module {
 	}
 
 	async generate() {
-		let data = await fs.promises.readFile(this.source);
+		let data = this.parse(await fs.promises.readFile(this.source));
 
+		await fs.promises.writeFile(this.target, compress(data));
+	}
+
+	parse(data) {
 		if (data[0] == 0x21 && data[1] == 0xB3 && data[2] == 0x84) {
 			data = data.subarray(0x4B3);
 		}
@@ -272,7 +276,87 @@ class Module {
 			data.fill(0, 0x0A, 0x1E);  // Clear ETracker signature
 		}
 
-		await fs.promises.writeFile(this.target, compress(data));
+		this.parseModule(data);
+
+		let dataSize = this.patternTable + this.patternTableSize;
+		if (dataSize > data.length) {
+			throw new Error("File size too small.");
+		} else if (dataSize < data.length) {
+			// console.log(`File size too large by ${data.length - dataSize} byte(s) in ${this.source}`);
+		}
+
+		return data.subarray(0, dataSize);
+	}
+
+	parseModule(data) {
+		const readWord = address => data[address] | data[address + 1] << 8;
+
+		const tables = [readWord(0), readWord(2), readWord(4), readWord(6), readWord(8)];
+		[this.songTable, this.patternTable, this.instrumentTable, this.ornamentTable, ] = tables;
+
+		if (tables.some(table => table >= data.length)) {
+			throw new Error("Table address exceeds file length.");
+		}
+		if (tables.some(table => table > this.patternTable)) {
+			throw new Error(`Patterns is not the last table.`);
+		}
+
+		this.parseSongTable(data);
+		this.parsePatternTable(data);
+	}
+
+	parseSongTable(data) {
+		let maxPattern = -1;
+		let loopPosition = -1;
+		let patternHeight = -1;
+		for (let songPosition = 0; ; songPosition++) {
+			const songCommand = data[this.songTable + songPosition];
+			if (songCommand == 0xFF) {
+				this.songTableSize = songPosition + 1;
+				break;
+			} else if (songCommand == 0xFE) {
+				if (loopPosition != -1)
+					throw new Error("More than one loop position.");
+				loopPosition = songPosition;
+			} else if (songCommand >= 0x60) {
+				if (patternHeight != -1)
+					throw new Error("More than one pattern height.");
+				patternHeight = songCommand - 0x60;
+			} else {
+				if (songCommand % 3 != 0)
+					throw new Error("Pattern number is not a multiple of 3.");
+				maxPattern = Math.max(maxPattern, songCommand / 3);
+			}
+		}
+		if (loopPosition < 0)
+			throw new Error("No loop position.");
+		if (patternHeight < 0)
+			throw new Error("No pattern height.");
+		if (maxPattern < 0)
+			throw new Error("No patterns.");
+
+		this.patternCount = maxPattern + 1;
+		this.patternHeight = patternHeight;
+	}
+
+	parsePatternTable(data) {
+		const readWord = address => data[address] | data[address + 1] << 8;
+
+		this.patternTableSize = this.patternCount * 6 * 2;
+		let patternsEnd = this.patternTable + this.patternTableSize;
+
+		this.patterns = [];
+		for (let pattern = 0; pattern < this.patternCount; pattern++) {
+			let tracks = [];
+			for (let track = 0; track < 6; track++) {
+				const trackAddress = readWord(this.patternTable + (pattern * 6 + track) * 2);
+				if (trackAddress >= patternsEnd) {
+					throw new Error("Track comes after patterns.");
+				}
+				tracks.push(trackAddress);
+			}
+			this.patterns.push(tracks);
+		}
 	}
 }
 
