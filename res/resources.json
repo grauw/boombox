@@ -34,6 +34,18 @@
 		{
 			"source": "Pyramex - Vexx Ingame (2005).etc",
 			"target": "../gen/vexxingame.lz4"
+		},
+		{
+			"source": "Pyramex - Hubbard's Choice (2010).saa",
+			"target": "../gen/hubbardschoice.lz4"
+		},
+		{
+			"source": "Pyramex - Harlequin - Title Music (2009).saa",
+			"target": "../gen/harlequintitle.lz4"
+		},
+		{
+			"source": "Pyramex - RobLike-1 (2014).cop",
+			"target": "../gen/roblike1.lz4"
 		}
 	]
 }

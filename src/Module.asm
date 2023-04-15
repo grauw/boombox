@@ -14,6 +14,9 @@ Module_playlist:
 	Module Module_electron_data
 	Module Module_electro1_data
 	Module Module_electro3_data
+	Module Module_hubbardsChoice_data
+	Module Module_harlequinTitle_data
+	Module Module_robLike1_data
 
 	SECTION page2
 
@@ -29,5 +32,16 @@ Module_electro1_data:
 	INCBIN "electro1.lz4"
 Module_electro3_data:
 	INCBIN "electro3.lz4"
+
+	ENDS
+
+	SECTION page1
+
+Module_hubbardsChoice_data:
+	INCBIN "hubbardschoice.lz4"
+Module_harlequinTitle_data:
+	INCBIN "harlequintitle.lz4"
+Module_robLike1_data:
+	INCBIN "roblike1.lz4"
 
 	ENDS
