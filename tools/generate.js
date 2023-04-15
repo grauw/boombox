@@ -33,6 +33,7 @@ class Resources {
 			new Graphics(
 				path.resolve(path.dirname(resourcesPath), json.graphics.boombox),
 				path.resolve(path.dirname(resourcesPath), json.graphics.reels),
+				path.resolve(path.dirname(resourcesPath), json.graphics.font),
 				path.resolve(path.dirname(resourcesPath), json.graphics.target)
 			),
 			json.modules.map(jsonModule => {
@@ -46,9 +47,10 @@ class Resources {
 }
 
 class Graphics {
-	constructor(boombox, reels, target) {
+	constructor(boombox, reels, font, target) {
 		this.boombox = new Image(boombox);
 		this.reels = new Image(reels);
+		this.font = new Image(font);
 		this.target = target;
 	}
 
@@ -57,6 +59,7 @@ class Graphics {
 
 		await this.generateReels(graphics);
 		await this.generateBoombox(graphics);
+		await this.generateFont(graphics);
 		await this.generateVUMeters(graphics);
 
 		// patch the dark red to look nicer on MSX2
@@ -104,6 +107,18 @@ class Graphics {
 
 		for (let color = 0; color < 16; color++) {
 			graphics.setPaletteColor(color, this.boombox.getColor(color));
+		}
+	}
+
+	async generateFont(graphics) {
+		await this.font.load();
+
+		for (let char = 0; char < 128; char++) {
+			const [pattern, color] = this.font.getPattern(char * 8, 0);
+			for (let table = 1; table < 3; table++) {
+				graphics.setPattern(table, 128 + char, pattern);
+				graphics.setPatternColor(table, 128 + char, color);
+			}
 		}
 	}
 

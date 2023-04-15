@@ -6,6 +6,8 @@ Boombox_STATUS_WAIT_RESET: equ 0
 Boombox: MACRO
 	status:
 		db 0
+	originalClickSwitch:
+		db 0
 	lastJiffy:
 		db 0
 	lz4Decoder:
@@ -18,10 +20,16 @@ Boombox: MACRO
 		Reels
 	vuMeters:
 		VUMeters
+	controls:
+		Controls
 	ENDM
 
 ; ix = this
 Boombox_Construct:
+	ld a,(CLIKSW)
+	ld (ix + Boombox.originalClickSwitch),a
+	xor a
+	ld (CLIKSW),a
 	push ix
 	call Boombox_GetLZ4Decoder
 	call LZ4Decoder_Construct
@@ -46,11 +54,20 @@ Boombox_Construct:
 	call Boombox_GetVUMeters
  	call VUMeters_Construct
 	pop ix
+	push ix
+	ld hl,Module_playlist
+	call Boombox_GetControls
+	call Controls_Construct
+	pop ix
 	call ENASCR
 	ret
 
 ; ix = this
 Boombox_Destruct:
+	push ix
+	call Boombox_GetControls
+	call Controls_Destruct
+	pop ix
 	push ix
 	call Boombox_GetVUMeters
 	call VUMeters_Destruct
@@ -71,6 +88,8 @@ Boombox_Destruct:
 	call Boombox_GetLZ4Decoder
 	call LZ4Decoder_Destruct
 	pop ix
+	ld a,(ix + Boombox.originalClickSwitch)
+	ld (CLIKSW),a
 	ret
 
 ; ix = this
@@ -129,29 +148,38 @@ Boombox_GetVUMeters:
  	ret
 
 ; ix = this
+; ix <- controls
+Boombox_GetControls:
+	ld bc,Boombox.controls
+	add ix,bc
+	ret
+
+; ix = this
 Boombox_Run: PROC
-	push ix
-	call Boombox_GetPlayer
-	ld a,5
-	call Player_Load
-	call Player_Play
-	pop ix
 	set Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
 Loop:
 	call Boombox_Tick
 	call Boombox_WaitTick
 	call Boombox_Render
-	call CHSNS
-	ret nz
-	jr Loop
+	bit Controls_STATUS_EXIT,(ix + Boombox.controls.status)
+	jr z,Loop
+	ret
 	ENDP
 
 ; ix = this
 Boombox_Tick:
+	call Boombox_TryLoad
+	push ix
+	call Boombox_GetControls
+	call Controls_Tick
+	pop ix
+	call Boombox_UpdatePlayer
 	push ix
 	call Boombox_GetPlayer
 	call Player_Tick
 	pop ix
+	call Boombox_GetReelsIncrement
+	ld (ix + Boombox.reels.increment),a
 	push ix
 	call Boombox_GetReels
 	call Reels_Tick
@@ -161,6 +189,72 @@ Boombox_Tick:
 	call VUMeters_Tick
 	pop ix
 	ret
+
+; ix = this
+Boombox_TryLoad:
+	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
+	ret nz
+	ld a,(ix + Boombox.controls.playing)
+	cp (ix + Boombox.player.loaded)
+	ret z
+	set Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
+	push ix
+	call Boombox_GetPlayer
+	call Player_Load
+	pop ix
+	ret
+
+; ix = this
+Boombox_UpdatePlayer: PROC
+	ld a,(ix + Boombox.controls.playing)
+	cp (ix + Boombox.player.loaded)
+	jr nz,Load
+	bit Controls_STATUS_PLAYING,(ix + Boombox.controls.status)
+	jr z,Stop
+Play:
+	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
+	ret nz
+	push ix
+	call Boombox_GetPlayer
+	call Player_Play
+	pop ix
+	ret
+Stop:
+	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
+	ret z
+	push ix
+	call Boombox_GetPlayer
+	call Player_Stop
+	pop ix
+	ret
+Load:
+	push ix
+	call Boombox_GetPlayer
+	call Player_Reset
+	pop ix
+	ret
+	ENDP
+
+; ix = this
+; a <- increment
+Boombox_GetReelsIncrement: PROC
+	xor a
+	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
+	ret z
+	ld b,(ix + Boombox.player.loaded)
+	ld c,(ix + Boombox.controls.selection)
+	ld a,c
+Loop:
+	sub 3
+	jr nc,Loop
+	sub c
+	add a,b
+	cp -3
+	ld a,08H
+	ret c
+	neg
+	ret
+	ENDP
 
 ; ix = this
 Boombox_WaitTick:
@@ -201,5 +295,9 @@ Boombox_Render:
 	push ix
 	call Boombox_GetVUMeters
 	call VUMeters_Render
+	pop ix
+	push ix
+	call Boombox_GetControls
+	call Controls_Render
 	pop ix
 	ret

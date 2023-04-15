@@ -2,6 +2,7 @@
 	"graphics": {
 		"boombox": "boombox.png",
 		"reels": "reels.png",
+		"font": "font.png",
 		"target": "../gen/graphics.lz4"
 	},
 	"modules": [

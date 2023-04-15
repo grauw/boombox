@@ -63,6 +63,7 @@ Loop:
 	INCLUDE "Graphics.asm"
 	INCLUDE "Reels.asm"
 	INCLUDE "VUMeters.asm"
+	INCLUDE "Controls.asm"
 
 	SECTION RAM
 
