@@ -181,16 +181,20 @@ Player_CopyRegisters:
 
 ; ix = this
 Player_Render: PROC
-	push ix
-	pop hl
-	ld bc,Player.saaRegisters + Player_SAA_REGISTER_COUNT - 1
-	add hl,bc
-	ld bc,Player_SAA_REGISTER_COUNT << 8 | SoundStar_DATA
-	ld a,Player_SAA_REGISTER_COUNT
-Loop:
-	dec a
+	ld c,SoundStar_DATA
+	bit 0,(ix + Player.saaRegisters + Player_SAA_ENABLE_RESET)
+	jr nz,NoMute
+	ld a,Player_SAA_ENABLE_RESET
+	ld b,(ix + Player.saaRegisters + Player_SAA_ENABLE_RESET)
 	out (SoundStar_ADDRESS),a
-	outd
-	jp nz,Loop
+	out (c),b
+NoMute:
+	; output in eTracker sequence
+	IRP ?register, 00H, 01H, 09H, 08H, 10H, 02H, 03H, 0BH, 0AH, 11H, 04H, 05H, 0DH, 0CH, 12H, 16H, 18H, 19H, 14H, 15H, 1CH
+	ld a,?register
+	ld b,(ix + Player.saaRegisters + ?register)
+	out (SoundStar_ADDRESS),a
+	out (c),b
+	ENDM
 	ret
 	ENDP
