@@ -25,7 +25,6 @@ Reels_Construct:
 	ld b,a
 	ld c,1
 	call WRTVDP
-	call Reels_Draw
 	ret
 
 ; ix = this

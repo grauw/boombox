@@ -58,7 +58,6 @@ Boombox_Construct:
 	call Boombox_GetControls
 	call Controls_Construct
 	pop ix
-	call ENASCR
 	ret
 
 ; ix = this
@@ -169,6 +168,8 @@ Loop:
 Boombox_Tick:
 	call Boombox_TryLoad
 	push ix
+	ld a,(ix + Boombox.status)
+	and 1 << Boombox_STATUS_WAIT_RESET
 	call Boombox_GetControls
 	call Controls_Tick
 	pop ix
@@ -266,19 +267,21 @@ Boombox_WaitTick:
 ; ix = this
 ; a <- frame delta
 Boombox_WaitFrame: PROC
-	ld a,(ix + Boombox.lastJiffy)
+	ld c,(ix + Boombox.lastJiffy)
 	bit Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
-	jr z,Continue
-	res Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
-	ld a,(JIFFY)
-Continue:
-	ld c,a
+	jr nz,Reset
 Loop:
 	ld a,(JIFFY)
 	ld (ix + Boombox.lastJiffy),a
 	sub c
 	jr z,Loop
 	ret
+Reset:
+	res Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
+	ld a,(JIFFY)
+	ld c,a
+	call Loop
+	jp ENASCR
 	ENDP
 
 ; ix = this

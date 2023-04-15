@@ -28,9 +28,11 @@ Controls_Construct:
 Controls_Destruct:
 	ret
 
+; a = handle input (0: yes)
 ; ix = this
 Controls_Tick:
-	call Controls_HandleInput
+	and a
+	call z,Controls_HandleInput
 	call Controls_Draw
 	ret
 
