@@ -65,6 +65,8 @@ class Graphics {
 		// patch the dark red to look nicer on MSX2
 		graphics.setPaletteColor(6, [5, 2, 2]);
 
+		graphics.optimiseForCompression();
+
 		await fs.promises.writeFile(this.target, compress(graphics.vram));
 		await fs.promises.writeFile(this.playlistTarget, compress(playlistGraphics));
 	}
@@ -139,8 +141,8 @@ class Graphics {
 		];
 		for (let table = 1; table < 3; table++) {
 			for (let pattern = 0; pattern < selectionPatterns.length; pattern++) {
-				graphics.setPattern(table, 0xFC + pattern, selectionPatterns[pattern]);
-				graphics.setPatternColor(table, 0xFC + pattern, [0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F]);
+				graphics.setPattern(table, 0xFC + pattern, selectionPatterns[pattern].map(v => v ^ 0xFF));
+				graphics.setPatternColor(table, 0xFC + pattern, [0xF1, 0xF1, 0xF1, 0xF1, 0xF1, 0xF1, 0xF1, 0xF1]);
 			}
 		}
 
@@ -159,7 +161,7 @@ class Graphics {
 	async generateVUMeters(graphics) {
 		const L = 0x3E, R = 0xF8;
 		graphics.setPattern(1, 0xF3, [0, 0, 0, 0, 0, 0, 0, 0]);
-		graphics.setPatternColor(1, 0xF3, [0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11]);
+		graphics.setPatternColor(1, 0xF3, [0x31, 0x31, 0x31, 0x31, 0x31, 0x31, 0x31, 0x31]);
 		for (let i = 0; i < 4; i++) {
 			graphics.setPattern(1, 0xF4 + i, [i >= 3 ? L : 0, 0, i >= 2 ? L : 0, 0, i >= 1 ? L : 0, 0, L, 0]);
 			graphics.setPatternColor(1, 0xF4 + i, [0x31, 0x31, 0x31, 0x31, 0x31, 0x31, 0x31, 0x31]);
@@ -209,6 +211,30 @@ class Screen2 {
 			throw new Error("Invalid parameters.");
 		this.vram[0x1B80 + index * 2 + 0] = rgb[0] << 4 | rgb[2];
 		this.vram[0x1B80 + index * 2 + 1] = rgb[1];
+	}
+
+	optimiseForCompression() {
+		for (let table = 0; table < 3; table++) {
+			for (let i = 0; i < 0x800; i++) {
+				const color = this.vram[0x2000 + table * 0x800 + i];
+				if ((color & 0x0F) == (color >> 4)) {
+					for (let j = i + 1; j < 0x800; j++) {
+						const nextColor = this.vram[0x2000 + table * 0x800 + j];
+						if ((color & 0x0F) == (nextColor & 0x0F) && (color & 0xF0) != (nextColor & 0xF0)) {
+							this.vram[0x2000 + table * 0x800 + i] = nextColor;
+							this.vram[0x0000 + table * 0x800 + i] = 0x00;
+							break;
+						} else if ((color & 0xF0) == (nextColor & 0xF0) && (color & 0x0F) != (nextColor & 0x0F)) {
+							this.vram[0x2000 + table * 0x800 + i] = nextColor;
+							this.vram[0x0000 + table * 0x800 + i] = 0xFF;
+							break;
+						} else {
+							continue;
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
