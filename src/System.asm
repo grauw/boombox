@@ -19,3 +19,38 @@ System_CheckEIState:
 	sbc a,a
 	and 1  ; (sp - 1) is not 0? return with pe, otherwise po
 	ret
+
+; a <- frequency (0: 60 Hz, 1: 50 Hz)
+; f <- frequency (z: 60 Hz, nz: 50 Hz)
+System_GetFrequency: PROC
+	ld a,(IDBYT2)
+	and a
+	jr nz,MSX2
+	ld a,(IDBYT0)
+	rlca
+	and 1
+	ret
+MSX2:
+	ld a,(RG9SAV)
+	rrca
+	and 1
+	ret
+	ENDP
+
+; a = frequency (0: 60 Hz, 1: 50 Hz)
+; f <- c: succeeded
+System_SetFrequency:
+	and 1
+	add a,a
+	ld b,a
+	ld a,(IDBYT2)
+	and a
+	ret z
+	ld a,(RG9SAV)
+	and ~2
+	or b
+	ld b,a
+	ld c,9
+	call WRTVDP
+	scf
+	ret

@@ -18,6 +18,8 @@ Controls: MACRO
 		db 0
 	playing:
 		db -1
+	frequencyTimer:
+		db 0
 	ENDM
 
 ; ix = this
@@ -154,14 +156,13 @@ Controls_Exit:
 
 ; ix = this
 Controls_ToggleFrequency:
-	ld a,(IDBYT2)
-	and a
+	call System_GetFrequency
+	xor 1
+	call System_SetFrequency
+	call System_GetFrequency
+	ld (ix + Controls.frequencyTimer),3 * 60
 	ret z
-	ld a,(RG9SAV)
-	xor 2
-	ld b,a
-	ld c,9
-	call WRTVDP
+	ld (ix + Controls.frequencyTimer),3 * 50
 	ret
 
 ; ix = this
@@ -195,7 +196,13 @@ Continue:
 	ENDP
 
 ; ix = this
-Controls_Render: PROC
+Controls_Render:
+	call Controls_RenderPlaylist
+	call Controls_RenderFrequency
+	ret
+
+; ix = this
+Controls_RenderPlaylist: PROC
 	ld hl,Graphics_playlistBuffer
 	ld bc,3 * 32
 	ld a,(ix + Controls.selection)
@@ -209,4 +216,26 @@ Continue:
 	ld bc,3 * 32
 	call LDIRVM
 	ret
+	ENDP
+
+; ix = this
+Controls_RenderFrequency: PROC
+	ld a,(ix + Controls.frequencyTimer)
+	sub 1
+	ret c
+	ld (ix + Controls.frequencyTimer),a
+	ld hl,Graphics_NAME_TABLE + 22 * 32 + 15
+	jr z,Blank
+	call System_GetFrequency
+	add a,0F8H
+	call WRTVRM
+	inc hl
+	ld a,0FAH
+	jp WRTVRM
+Blank:
+	ld a,0FBH
+	call WRTVRM
+	inc hl
+	ld a,0FBH
+	jp WRTVRM
 	ENDP

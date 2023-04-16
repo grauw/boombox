@@ -156,17 +156,7 @@ Continue:
 	jr Player_CopyRegisters
 Skip:
 	ld (ix + Player.frameSkipCounter),6
-	ld a,(IDBYT2)
-	and a
-	jr nz,SkipMSX2
-SkipMSX1:
-	ld a,(IDBYT0)
-	and 128
-	jr nz,Continue
-	ret
-SkipMSX2:
-	ld a,(RG9SAV)
-	and 2
+	call System_GetFrequency
 	jr nz,Continue
 	ret
 	ENDP
