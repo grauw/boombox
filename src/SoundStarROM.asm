@@ -25,7 +25,15 @@ page12:
 ROM_Main:
 	ei
 	call Reset
-	jr ROM_Boombox
+	ld a,7
+	call SNSMAT
+	bit 7,a
+	jr z,ROM_Boombox
+	ld a,1
+	call GTTRIG
+	and a
+	jr nz,ROM_Boombox
+	ret
 
 Reset: PROC
 	ld a,1CH
@@ -44,6 +52,7 @@ Loop:
 	ENDP
 
 ROM_Boombox:
+	call KILBUF
 	call ROM_SelectRAM
 	ret nc
 	ld hl,RAM_source
