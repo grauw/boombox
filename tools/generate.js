@@ -62,7 +62,8 @@ class Graphics {
 		await this.generateControls(graphics);
 		await this.generateVUMeters(graphics);
 
-		// patch the dark red to look nicer on MSX2
+		// patch colors to look nicer on MSX2
+		graphics.setPaletteColor(5, [3, 3, 6]);
 		graphics.setPaletteColor(6, [5, 2, 2]);
 
 		graphics.optimiseForCompression();
