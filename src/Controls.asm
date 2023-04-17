@@ -10,6 +10,7 @@ Controls_PATTERN_PAUSE: equ 0FEH
 
 Controls_STATUS_PLAYING: equ 0
 Controls_STATUS_EXIT: equ 6
+Controls_STATUS_UPDATED: equ 7
 
 Controls: MACRO
 	status:
@@ -47,6 +48,8 @@ Loop:
 	jr Loop
 Get:
 	call CHGET
+	ld b,(ix + Controls.status)
+	res Controls_STATUS_UPDATED,(ix + Controls.status)
 	cp 30
 	jp z,Controls_Previous
 	cp 31
@@ -61,6 +64,7 @@ Get:
 	jp z,Controls_Exit
 	cp 8
 	jp z,Controls_Stop
+	ld (ix + Controls.status),b
 	cp 24
 	jp z,Controls_ToggleFrequency
 	ret
@@ -167,6 +171,8 @@ Controls_ToggleFrequency:
 
 ; ix = this
 Controls_Draw: PROC
+	bit Controls_STATUS_UPDATED,(ix + Controls.status)
+	ret nz
 	ld hl,Graphics_playlistBuffer + 7
 	ld b,Controls_PATTERN_PLAY
 	call Draw
@@ -203,6 +209,9 @@ Controls_Render:
 
 ; ix = this
 Controls_RenderPlaylist: PROC
+	bit Controls_STATUS_UPDATED,(ix + Controls.status)
+	ret nz
+	set Controls_STATUS_UPDATED,(ix + Controls.status)
 	ld hl,Graphics_playlistBuffer
 	ld bc,3 * 32
 	ld a,(ix + Controls.selection)
