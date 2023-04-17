@@ -12,6 +12,8 @@ Boombox: MACRO
 		LZ4Decoder
 	player:
 		Player
+	graphics:
+		Graphics
 	reels:
 		Reels
 	vuMeters:
@@ -20,32 +22,20 @@ Boombox: MACRO
 
 ; ix = this
 Boombox_Construct:
-	ld a,(FORCLR)
-	ld hl,(BAKCLR)
-	push af
-	push hl
-	ld a,15
-	ld hl,0
-	ld (FORCLR),a
-	ld (BAKCLR),hl
-	call INIGRP
-	pop hl
-	pop af
-	ld (FORCLR),a
-	ld (BAKCLR),hl
 	push ix
 	call Boombox_GetLZ4Decoder
 	call LZ4Decoder_Construct
-	ld hl,Boombox_graphics
-	call LZ4Decoder_Decode
-	ld de,0
-	call LDIRVM
 	pop ix
 	push ix
 	ld hl,Module_playlist
 	call Boombox_GetLZ4Decoder_DE
 	call Boombox_GetPlayer
 	call Player_Construct
+	pop ix
+	push ix
+	call Boombox_GetLZ4Decoder_DE
+	call Boombox_GetGraphics
+	call Graphics_Construct
 	pop ix
 	push ix
 	call Boombox_GetReels
@@ -56,6 +46,7 @@ Boombox_Construct:
 	call Boombox_GetVUMeters
  	call VUMeters_Construct
 	pop ix
+	call ENASCR
 	ret
 
 ; ix = this
@@ -67,6 +58,10 @@ Boombox_Destruct:
 	push ix
 	call Boombox_GetReels
 	call Reels_Destruct
+	pop ix
+	push ix
+	call Boombox_GetGraphics
+	call Graphics_Destruct
 	pop ix
 	push ix
 	call Boombox_GetPlayer
@@ -110,6 +105,13 @@ Boombox_GetPlayer_DE:
 	add ix,de
 	ex (sp),ix
 	pop de
+	ret
+
+; ix = this
+; ix <- graphics
+Boombox_GetGraphics:
+	ld bc,Boombox.graphics
+	add ix,bc
 	ret
 
 ; ix = this
@@ -201,6 +203,3 @@ Boombox_Render:
 	call VUMeters_Render
 	pop ix
 	ret
-
-Boombox_graphics:
-	INCBIN "graphics.lz4"

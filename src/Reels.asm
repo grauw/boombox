@@ -63,7 +63,7 @@ Reels_Render:
 	pop hl
 	ld bc,Reels.spriteAttributes
 	add hl,bc
-	ld de,(GRPATR)
+	ld de,Graphics_SPRITE_ATTRIBUTE_TABLE
 	ld bc,33
 	call LDIRVM
 	ret

@@ -31,6 +31,7 @@ class Resources {
 
 		return new Resources(
 			new Graphics(
+				path.resolve(path.dirname(resourcesPath), json.graphics.boombox),
 				path.resolve(path.dirname(resourcesPath), json.graphics.reels),
 				path.resolve(path.dirname(resourcesPath), json.graphics.target)
 			),
@@ -45,44 +46,194 @@ class Resources {
 }
 
 class Graphics {
-	constructor(reels, target) {
-		this.reels = reels;
+	constructor(boombox, reels, target) {
+		this.boombox = new Image(boombox);
+		this.reels = new Image(reels);
 		this.target = target;
 	}
 
 	async generate() {
-		const graphics = new Uint8Array(0x4000);
+		const graphics = new Screen2();
 
 		await this.generateReels(graphics);
+		await this.generateBoombox(graphics);
+		await this.generateVUMeters(graphics);
 
-		await fs.promises.writeFile(this.target, compress(graphics));
+		// patch the dark red to look nicer on MSX2
+		graphics.setPaletteColor(6, [5, 2, 2]);
+
+		await fs.promises.writeFile(this.target, compress(graphics.vram));
 	}
 
 	async generateReels(graphics) {
-		const png = new PNG(await fs.promises.readFile(this.reels));
-		if (png.colorType != 3)
-			throw new Error("Not indexed RGB.");
-		const pngPixels = await new Promise(resolve => png.decodePixels(resolve));
+		await this.reels.load();
 
-		let spritePatternAddress = 0x3800;
 		for (let index = 0; index < 16; index++) {
 			for (let sprite = 0; sprite < 4; sprite++) {
 				for (let char = 0; char < 4; char++) {
-					for (let line = 0; line < 8; line++) {
-						let accu = 0;
-						for (let bit = 0; bit < 8; bit++) {
-							const x = index * 32 + (sprite & 1) * 16 + ((char >> 1) & 1) * 8 + bit;
-							const y = ((sprite >> 1) & 1) * 16 + (char & 1) * 8 + line;
-							const pixel = pngPixels[y * png.width + x];
-							accu = (accu << 1) | (pixel > 1 ? 1 : 0);
-						}
-						graphics[spritePatternAddress++] = accu;
-					}
+					const pattern = this.reels.getSpritePattern(8,
+						index * 32 + (sprite & 1) * 16 + ((char >> 1) & 1) * 8,
+						((sprite >> 1) & 1) * 16 + (char & 1) * 8
+					);
+					graphics.setSpritePattern(index * 16 + sprite * 4 + char, pattern);
 				}
 			}
 		}
 
-		graphics[0x1800] = 208;  // hide sprites
+		graphics.setSpriteAttribute(0, 208);  // hide sprites
+	}
+
+	async generateBoombox(graphics) {
+		await this.boombox.load();
+
+		for (let table = 0; table < 3; table++) {
+			const patterns = [];
+			for (let tile = 0; tile < 256; tile++) {
+				const [pattern, color] = this.boombox.getPattern((tile & 31) * 8, table * 64 + (tile >> 5) * 8);
+				const hash = [...pattern, ...color].reduce((accu, value) => accu << 8n | BigInt(value), 0n);
+				let patternIndex = patterns.indexOf(hash);
+				if (patternIndex == -1) {
+					patternIndex = patterns.length;
+					graphics.setPattern(table, patternIndex, pattern);
+					graphics.setPatternColor(table, patternIndex, color);
+					patterns.push(hash);
+				}
+				graphics.setName(table, tile, patternIndex);
+			}
+		}
+
+		for (let color = 0; color < 16; color++) {
+			graphics.setPaletteColor(color, this.boombox.getColor(color));
+		}
+	}
+
+	async generateVUMeters(graphics) {
+		const L = 0x3E, R = 0xF8;
+		graphics.setPattern(1, 0xF3, [0, 0, 0, 0, 0, 0, 0, 0]);
+		for (let i = 0; i < 4; i++) {
+			graphics.setPattern(1, 0xF4 + i, [i >= 3 ? L : 0, 0, i >= 2 ? L : 0, 0, i >= 1 ? L : 0, 0, L, 0]);
+			graphics.setPattern(1, 0xF8 + i, [i >= 3 ? R : 0, 0, i >= 2 ? R : 0, 0, i >= 1 ? R : 0, 0, R, 0]);
+		}
+		for (let i = 0xF3; i < 0xFC; i++) {
+			graphics.setPatternColor(1, i, [0xF1, 0xF1, 0xF1, 0xF1, 0xF1, 0xF1, 0xF1, 0xF1]);
+		}
+	}
+}
+
+class Screen2 {
+	constructor() {
+		this.vram = new Uint8Array(0x4000);
+	}
+
+	setName(table = 0, index = 0, pattern = 0) {
+		if (table < 0 || table >= 3 || index < 0 || index >= 256 || pattern < 0 || pattern >= 256)
+			throw new Error("Invalid parameters.");
+		this.vram[0x1800 + table * 0x100 + index] = pattern;
+	}
+
+	setPattern(table = 0, index = 0, pattern = [0, 0, 0, 0, 0, 0, 0, 0]) {
+		if (table < 0 || table >= 3 || index < 0 || index >= 256 || pattern.length != 8)
+			throw new Error("Invalid parameters.");
+		this.vram.set(pattern, 0x0000 + table * 0x800 + index * 8);
+	}
+
+	setPatternColor(table = 0, index = 0, color = [0, 0, 0, 0, 0, 0, 0, 0]) {
+		if (table < 0 || table >= 3 || index < 0 || index >= 256 || color.length != 8)
+			throw new Error("Invalid parameters.");
+		this.vram.set(color, 0x2000 + table * 0x800 + index * 8);
+	}
+
+	setSpriteAttribute(index = 0, y = 0, x = 0, pattern = 0, color = 0) {
+		if (index < 0 || index >= 256 || pattern < 0 || pattern >= 256)
+			throw new Error("Invalid parameters.");
+		this.vram.set([y, x, pattern, color], 0x1B00 + index * 4);
+	}
+
+	setSpritePattern(index = 0, pattern = [0, 0, 0, 0, 0, 0, 0, 0]) {
+		if (index < 0 || index >= 256 || pattern.length != 8)
+			throw new Error("Invalid parameters.");
+		this.vram.set(pattern, 0x3800 + index * 8);
+	}
+
+	setPaletteColor(index = 0, rgb = [0, 0, 0]) {
+		if (index < 0 || index >= 16 || rgb.length != 3)
+			throw new Error("Invalid parameters.");
+		this.vram[0x1B80 + index * 2 + 0] = rgb[0] << 4 | rgb[2];
+		this.vram[0x1B80 + index * 2 + 1] = rgb[1];
+	}
+}
+
+class Image {
+	constructor(path) {
+		this.path = path;
+		this.pixels = [];
+		this.palette = [];
+	}
+
+	async load() {
+		const png = new PNG(await fs.promises.readFile(this.path));
+		if (png.colorType != 3)
+			throw new Error("Not indexed RGB.");
+		const pixels = await new Promise(resolve => png.decodePixels(resolve));
+
+		this.pixels = [];
+		for (let y = 0; y < png.height; y++) {
+			this.pixels.push(pixels.subarray(y * png.width, (y + 1) * png.width));
+		}
+
+		this.palette = [];
+		for (let color = 0; color < 16; color++) {
+			this.palette.push(png.palette.slice(color * 3 + 0, color * 3 + 3).map(
+				component => Math.pow(component / 255, 2.2 / 1)));
+		}
+	}
+
+	getSpritePattern(color, x, y) {
+		const pattern = [0, 0, 0, 0, 0, 0, 0, 0];
+		for (let line = 0; line < 8; line++) {
+			for (let bit = 0; bit < 8; bit++) {
+				const pixel = this.pixels[y + line][x + bit] & 15;
+				pattern[line] = (pattern[line] << 1) | (pixel == color ? 1 : 0);
+			}
+		}
+		return pattern;
+	}
+
+	getPattern(x, y) {
+		const pattern = [0, 0, 0, 0, 0, 0, 0, 0];
+		const color = [0, 0, 0, 0, 0, 0, 0, 0];
+		for (let line = 0; line < 8; line++) {
+			let color1 = -1;
+			let color1Count = 0;
+			let color2 = -1;
+			let color2Count = 0;
+			for (let bit = 0; bit < 8; bit++) {
+				const pixel = this.pixels[y + line][x + bit] & 15;
+				if (color1Count == 0 || color1 == pixel) {
+					color1 = pixel;
+					color1Count++;
+				} else if (color2Count == 0 || color2 == pixel) {
+					color2 = pixel;
+					color2Count++;
+				} else {
+					throw new Error(`Too many colours per tile line at (${x + bit}, ${y + line})`);
+				}
+				pattern[line] = (pattern[line] << 1) | (pixel == color2 ? 1 : 0);
+			}
+			if (!color2Count) {
+				color2 = color1;
+			}
+			if (color2 < color1) {
+				[color1, color2] = [color2, color1];
+				pattern[line] ^= 0xFF;
+			}
+			color[line] = color2 << 4 | color1;
+		}
+		return [pattern, color];
+	}
+
+	getColor(color) {
+		return this.palette[color].map(component => Math.round(Math.pow(component, 1 / 2.4) * 7));
 	}
 }
 

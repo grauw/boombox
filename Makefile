@@ -18,3 +18,12 @@ copy: all
 
 run: all
 	openmsx -machine Panasonic_FS-A1GT -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl
+
+run2: all
+	openmsx -machine Philips_VG_8020 -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl
+
+run3: all
+	openmsx -machine Yamaha_CX5M -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl
+
+run4: all
+	openmsx -machine Sony_HB-75 -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl

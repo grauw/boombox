@@ -1,5 +1,6 @@
 {
 	"graphics": {
+		"boombox": "boombox.png",
 		"reels": "reels.png",
 		"target": "../gen/graphics.lz4"
 	},

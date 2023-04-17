@@ -60,6 +60,7 @@ Loop:
 	INCLUDE "LZ4Decoder.asm"
 	INCLUDE "Module.asm"
 	INCLUDE "Player.asm"
+	INCLUDE "Graphics.asm"
 	INCLUDE "Reels.asm"
 	INCLUDE "VUMeters.asm"
 
