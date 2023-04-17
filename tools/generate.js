@@ -31,10 +31,10 @@ class Resources {
 
 		return new Resources(
 			new Graphics(
-				path.resolve(path.dirname(resourcesPath), json.graphics.boombox),
+				json.graphics.boomboxFrames.map(frame => path.resolve(path.dirname(resourcesPath), frame)),
 				path.resolve(path.dirname(resourcesPath), json.graphics.reels),
-				path.resolve(path.dirname(resourcesPath), json.graphics.font),
-				path.resolve(path.dirname(resourcesPath), json.graphics.target)
+				path.resolve(path.dirname(resourcesPath), json.graphics.target),
+				path.resolve(path.dirname(resourcesPath), json.graphics.playlistTarget)
 			),
 			json.modules.map(jsonModule => {
 				return new Module(
@@ -47,25 +47,26 @@ class Resources {
 }
 
 class Graphics {
-	constructor(boombox, reels, font, target) {
-		this.boombox = new Image(boombox);
+	constructor(boomboxFrames, reels, target, playlistTarget) {
+		this.boomboxFrames = boomboxFrames.map(frame => new Image(frame));
 		this.reels = new Image(reels);
-		this.font = new Image(font);
 		this.target = target;
+		this.playlistTarget = playlistTarget;
 	}
 
 	async generate() {
 		const graphics = new Screen2();
 
 		await this.generateReels(graphics);
-		await this.generateBoombox(graphics);
-		await this.generateFont(graphics);
+		const playlistGraphics = await this.generateBoombox(graphics);
+		await this.generateControls(graphics);
 		await this.generateVUMeters(graphics);
 
 		// patch the dark red to look nicer on MSX2
 		graphics.setPaletteColor(6, [5, 2, 2]);
 
 		await fs.promises.writeFile(this.target, compress(graphics.vram));
+		await fs.promises.writeFile(this.playlistTarget, compress(playlistGraphics));
 	}
 
 	async generateReels(graphics) {
@@ -87,37 +88,59 @@ class Graphics {
 	}
 
 	async generateBoombox(graphics) {
-		await this.boombox.load();
+		await Promise.all(this.boomboxFrames.map(frame => frame.load()));
 
-		for (let table = 0; table < 3; table++) {
-			const patterns = [];
-			for (let tile = 0; tile < 256; tile++) {
-				const [pattern, color] = this.boombox.getPattern((tile & 31) * 8, table * 64 + (tile >> 5) * 8);
-				const hash = [...pattern, ...color].reduce((accu, value) => accu << 8n | BigInt(value), 0n);
-				let patternIndex = patterns.indexOf(hash);
-				if (patternIndex == -1) {
-					patternIndex = patterns.length;
-					graphics.setPattern(table, patternIndex, pattern);
-					graphics.setPatternColor(table, patternIndex, color);
-					patterns.push(hash);
+		const graphicsFrames = [graphics];
+		for (let frame = 1; frame < this.boomboxFrames.length; frame++) {
+			graphicsFrames.push(new Screen2());
+		}
+
+		const patterns = [[], [], []];
+		for (let frame = 0; frame < this.boomboxFrames.length; frame++) {
+			const boombox = this.boomboxFrames[frame];
+
+			for (let table = 0; table < 3; table++) {
+				for (let tile = 0; tile < 256; tile++) {
+					const [pattern, color] = boombox.getPattern((tile & 31) * 8, table * 64 + (tile >> 5) * 8);
+					const hash = [...pattern, ...color].reduce((accu, value) => accu << 8n | BigInt(value), 0n);
+					let patternIndex = patterns[table].indexOf(hash);
+					if (patternIndex == -1) {
+						patternIndex = patterns[table].length;
+						graphicsFrames[0].setPattern(table, patternIndex, pattern);
+						graphicsFrames[0].setPatternColor(table, patternIndex, color);
+						patterns[table].push(hash);
+					}
+					graphicsFrames[frame].setName(table, tile, patternIndex);
 				}
-				graphics.setName(table, tile, patternIndex);
 			}
 		}
 
 		for (let color = 0; color < 16; color++) {
-			graphics.setPaletteColor(color, this.boombox.getColor(color));
+			const boombox = this.boomboxFrames[0];
+			graphicsFrames[0].setPaletteColor(color, boombox.getColor(color));
 		}
+
+		const offset = 0x1800 + 14 * 32;
+		const length = 3 * 32;
+		const playlistGraphics = new Uint8Array((this.boomboxFrames.length - 1) * length);
+		for (let frame = 1; frame < this.boomboxFrames.length; frame++) {
+			const data = graphicsFrames[frame].vram.subarray(offset, offset + length);
+			playlistGraphics.set(data, (frame - 1) * length);
+		}
+		return playlistGraphics;
 	}
 
-	async generateFont(graphics) {
-		await this.font.load();
-
-		for (let char = 0; char < 128; char++) {
-			const [pattern, color] = this.font.getPattern(char * 8, 0);
-			for (let table = 1; table < 3; table++) {
-				graphics.setPattern(table, 128 + char, pattern);
-				graphics.setPatternColor(table, 128 + char, color);
+	async generateControls(graphics) {
+		const patterns = [
+			[0x60, 0x70, 0x78, 0x7C, 0x78, 0x70, 0x60, 0x00],
+			[0x0C, 0x1C, 0x3C, 0x7C, 0x3C, 0x1C, 0x0C, 0x00],
+			[0x6C, 0x6C, 0x6C, 0x6C, 0x6C, 0x6C, 0x6C, 0x00],
+			[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		];
+		for (let table = 1; table < 3; table++) {
+			for (let pattern = 0; pattern < patterns.length; pattern++) {
+				graphics.setPattern(table, 0xFC + pattern, patterns[pattern]);
+				graphics.setPatternColor(table, 0xFC + pattern, [0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F]);
 			}
 		}
 	}

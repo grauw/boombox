@@ -1,9 +1,14 @@
 {
 	"graphics": {
-		"boombox": "boombox.png",
+		"boomboxFrames": [
+			"boombox1.png",
+			"boombox2.png",
+			"boombox3.png",
+			"boombox4.png"
+		],
 		"reels": "reels.png",
-		"font": "font.png",
-		"target": "../gen/graphics.lz4"
+		"target": "../gen/graphics.lz4",
+		"playlistTarget": "../gen/playlist.lz4"
 	},
 	"modules": [
 		{

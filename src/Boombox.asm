@@ -55,7 +55,6 @@ Boombox_Construct:
  	call VUMeters_Construct
 	pop ix
 	push ix
-	ld hl,Module_playlist
 	call Boombox_GetControls
 	call Controls_Construct
 	pop ix

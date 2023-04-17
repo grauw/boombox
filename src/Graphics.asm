@@ -8,6 +8,7 @@ Graphics_SPRITE_ATTRIBUTE_TABLE: equ 1B00H
 Graphics_SPRITE_PATTERN_TABLE: equ 3800H
 
 Graphics_nameTableBuffer: equ 0C500H
+Graphics_playlistBuffer: equ 0D000H
 
 Graphics: MACRO
 	originalForegroundColor:
@@ -52,6 +53,7 @@ Graphics_Construct:
 	call LDIRVM
 	ld a,(IDBYT2)
 	and a
+	push ix
 	ld ix,SUB_RSTPLT
 	call nz,EXTROM  ; if MSX2 or up
 	ei
@@ -60,6 +62,11 @@ Graphics_Construct:
 	ld de,Graphics_nameTableBuffer
 	ld bc,300H
 	call LDIRMV
+	ld hl,Graphics_playlistData
+	call LZ4Decoder_Decode
+	ld de,Graphics_playlistBuffer
+	ldir
+	pop ix
 	ret
 
 ; ix = this
@@ -81,3 +88,5 @@ Graphics_Destruct:
 
 Graphics_data:
 	INCBIN "graphics.lz4"
+Graphics_playlistData:
+	INCBIN "playlist.lz4"
