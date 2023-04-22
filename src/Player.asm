@@ -6,6 +6,8 @@
 Player_SAA_REGISTER_COUNT: equ 1DH
 Player_SAA_ENABLE_RESET: equ 1CH
 
+Player_FADE_SPEED: equ 08H
+
 Player_STATUS_LOADED: equ 0
 Player_STATUS_PLAYING: equ 1
 Player_STATUS_UPDATED: equ 7
@@ -22,6 +24,8 @@ Player: MACRO
 	module:
 		dw 0
 	frameSkipCounter:
+		db 0
+	attenuation:
 		db 0
 	saaRegisters:
 		ds Player_SAA_REGISTER_COUNT
@@ -148,6 +152,64 @@ Player_Reset:
 	ret
 
 ; ix = this
+Player_Play_FadeIn:
+	call Player_FadeIn
+	bit Player_STATUS_PLAYING,(ix + Player.status)
+	ret nz
+	jr Player_Play
+
+; ix = this
+Player_FadeIn_Play:
+	call Player_FadeIn
+	and a
+	ret nz
+	jr Player_Play
+
+; ix = this
+Player_FadeOut_Stop:
+	call Player_FadeOut
+	inc a
+	ret nz
+	bit Player_STATUS_PLAYING,(ix + Player.status)
+	ret z
+	jr Player_Stop
+
+; ix = this
+Player_FadeOut_Reset:
+	call Player_FadeOut
+	inc a
+	ret nz
+	jr Player_Reset
+
+; ix = this
+; a <- attenuation
+Player_FadeIn:
+	ld a,(ix + Player.attenuation)
+	and a
+	ret z
+	res Player_STATUS_UPDATED,(ix + Player.status)
+	sub Player_FADE_SPEED
+	ld (ix + Player.attenuation),a
+	ret nc
+	xor a
+	ld (ix + Player.attenuation),a
+	ret
+
+; ix = this
+; a <- attenuation
+Player_FadeOut:
+	ld a,(ix + Player.attenuation)
+	cp 255
+	ret z
+	res Player_STATUS_UPDATED,(ix + Player.status)
+	add a,Player_FADE_SPEED
+	ld (ix + Player.attenuation),a
+	ret nc
+	ld a,255
+	ld (ix + Player.attenuation),a
+	ret
+
+; ix = this
 Player_Tick: PROC
 	bit Player_STATUS_PLAYING,(ix + Player.status)
 	jr z,Continue
@@ -175,7 +237,42 @@ Player_CopyRegisters:
 	ld hl,ETCPlayer_registers
 	ld bc,SAARegisters.envelope1 + 1
 	ldir
+	ld a,(ix + Player.attenuation)
+	and 0F0H
+	ret z
+	ld c,a
+	rrca
+	rrca
+	rrca
+	rrca
+	ld b,a
+	REPT 6, ?channel
+	ld a,(ix + Player.saaRegisters + ?channel)
+	call Player_Attenuate
+	ld (ix + Player.saaRegisters + ?channel),a
+	ENDM
 	ret
+
+; a = volume (L/R)
+; bc = attenuation (L/R)
+; a <- volume (L/R)
+Player_Attenuate: PROC
+	ld e,a
+	and 00FH
+	sub b
+	jr nc,ContinueLeft
+	xor a
+ContinueLeft:
+	ld d,a
+	ld a,e
+	and 0F0H
+	sub c
+	jr nc,ContinueRight
+	xor a
+ContinueRight:
+	or d
+	ret
+	ENDP
 
 ; ix = this
 Player_Render: PROC

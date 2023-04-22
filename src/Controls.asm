@@ -42,6 +42,8 @@ Controls_Tick:
 ; ix = this
 Controls_HandleInput: PROC
 Loop:
+	bit Controls_STATUS_EXIT,(ix + Controls.status)
+	ret nz
 	call CHSNS
 	ret z
 	call Get

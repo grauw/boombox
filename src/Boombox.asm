@@ -2,6 +2,7 @@
 ;
 ;
 Boombox_STATUS_WAIT_RESET: equ 0
+Boombox_STATUS_LEAD_IN: equ 1
 
 Boombox: MACRO
 	status:
@@ -39,6 +40,7 @@ Boombox_Construct:
 	call Boombox_GetLZ4Decoder_DE
 	call Boombox_GetPlayer
 	call Player_Construct
+	ld (ix + Player.attenuation),255
 	pop ix
 	push ix
 	call Boombox_GetLZ4Decoder_DE
@@ -161,6 +163,8 @@ Loop:
 	call Boombox_Render
 	bit Controls_STATUS_EXIT,(ix + Boombox.controls.status)
 	jr z,Loop
+	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
+	jr nz,Loop
 	ret
 	ENDP
 
@@ -194,10 +198,14 @@ Boombox_Tick:
 Boombox_TryLoad:
 	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
 	ret nz
+	ld a,(ix + Boombox.player.attenuation)
+	inc a
+	ret nz
 	ld a,(ix + Boombox.controls.playing)
 	cp (ix + Boombox.player.loaded)
 	ret z
 	set Boombox_STATUS_WAIT_RESET,(ix + Boombox.status)
+	set Boombox_STATUS_LEAD_IN,(ix + Boombox.status)
 	push ix
 	call Boombox_GetPlayer
 	call Player_Load
@@ -211,26 +219,33 @@ Boombox_UpdatePlayer: PROC
 	jr nz,Load
 	bit Controls_STATUS_PLAYING,(ix + Boombox.controls.status)
 	jr z,Stop
+	bit Boombox_STATUS_LEAD_IN,(ix + Boombox.status)
+	jr nz,LeadIn
 Play:
-	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
-	ret nz
 	push ix
 	call Boombox_GetPlayer
-	call Player_Play
+	call Player_Play_FadeIn
 	pop ix
 	ret
-Stop:
-	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
-	ret z
+LeadIn:
 	push ix
 	call Boombox_GetPlayer
-	call Player_Stop
+	call Player_FadeIn_Play
+	pop ix
+	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
+	ret z
+	res Boombox_STATUS_LEAD_IN,(ix + Boombox.status)
+	ret
+Stop:
+	push ix
+	call Boombox_GetPlayer
+	call Player_FadeOut_Stop
 	pop ix
 	ret
 Load:
 	push ix
 	call Boombox_GetPlayer
-	call Player_Reset
+	call Player_FadeOut_Reset
 	pop ix
 	ret
 	ENDP
@@ -238,9 +253,16 @@ Load:
 ; ix = this
 ; a <- increment
 Boombox_GetReelsIncrement: PROC
-	xor a
-	bit Player_STATUS_PLAYING,(ix + Boombox.player.status)
-	ret z
+	ld a,(ix + Boombox.player.attenuation)
+	cpl
+	add a,08H
+	rra
+	rrca
+	rrca
+	rrca
+	rrca
+	and 0FH
+	ld d,a
 	ld b,(ix + Boombox.player.loaded)
 	ld c,(ix + Boombox.controls.selection)
 	ld a,c
@@ -250,7 +272,7 @@ Loop:
 	sub c
 	add a,b
 	cp -3
-	ld a,08H
+	ld a,d
 	ret c
 	neg
 	ret
