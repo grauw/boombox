@@ -8,6 +8,7 @@ Player_SAA_ENABLE_RESET: equ 1CH
 
 Player_STATUS_LOADED: equ 0
 Player_STATUS_PLAYING: equ 1
+Player_STATUS_UPDATED: equ 7
 
 Player: MACRO
 	playlist:
@@ -104,6 +105,7 @@ Player_Unload:
 
 ; ix = this
 Player_Initialize:
+	res Player_STATUS_UPDATED,(ix + Player.status)
 	ld a,6  ; These do not get reset properly otherwise
 	ld (ETCPlayer_Tick_patternStepTime),a
 	ld a,0
@@ -121,11 +123,12 @@ Player_Initialize:
 	bit Player_STATUS_LOADED,(ix + Player.status)
 	call nz,ETCPlayer_Initialize
 	pop ix
-	jp Player_CopyRegisters
+	ret
 
 ; ix = this
 Player_Play:
 	set Player_STATUS_PLAYING,(ix + Player.status)
+	res Player_STATUS_UPDATED,(ix + Player.status)
 	ld (ix + Player.frameSkipCounter),6
 	ld (ix + Player.saaRegisters + Player_SAA_ENABLE_RESET),1
 	ret
@@ -133,31 +136,36 @@ Player_Play:
 ; ix = this
 Player_Stop:
 	res Player_STATUS_PLAYING,(ix + Player.status)
+	res Player_STATUS_UPDATED,(ix + Player.status)
 	ld (ix + Player.saaRegisters + Player_SAA_ENABLE_RESET),0
 	ret
 
 ; ix = this
 Player_Reset:
 	res Player_STATUS_PLAYING,(ix + Player.status)
+	res Player_STATUS_UPDATED,(ix + Player.status)
 	ld (ix + Player.saaRegisters + Player_SAA_ENABLE_RESET),2
 	ret
 
 ; ix = this
 Player_Tick: PROC
 	bit Player_STATUS_PLAYING,(ix + Player.status)
-	ret z
+	jr z,Continue
 	dec (ix + Player.frameSkipCounter)
-	jr z,Skip
-Continue:
-	push ix
-	bit Player_STATUS_LOADED,(ix + Player.status)
-	call nz,ETCPlayer_Tick
-	pop ix
-	jr Player_CopyRegisters
-Skip:
+	jr nz,NoSkip
 	ld (ix + Player.frameSkipCounter),6
 	call System_GetFrequency
-	jr nz,Continue
+	jr z,Continue
+NoSkip:
+	bit Player_STATUS_LOADED,(ix + Player.status)
+	jr z,Continue
+	res Player_STATUS_UPDATED,(ix + Player.status)
+	push ix
+	call ETCPlayer_Tick
+	pop ix
+Continue:
+	bit Player_STATUS_UPDATED,(ix + Player.status)
+	call z,Player_CopyRegisters
 	ret
 	ENDP
 
@@ -171,6 +179,9 @@ Player_CopyRegisters:
 
 ; ix = this
 Player_Render: PROC
+	bit Player_STATUS_UPDATED,(ix + Player.status)
+	ret nz
+	set Player_STATUS_UPDATED,(ix + Player.status)
 	ld c,SoundStar_DATA
 	bit 0,(ix + Player.saaRegisters + Player_SAA_ENABLE_RESET)
 	jr nz,NoMute

@@ -5,9 +5,13 @@ VUMeters_PATTERN_BLANK: equ 0F3H
 VUMeters_PATTERN_LEFT: equ 0F4H
 VUMeters_PATTERN_RIGHT: equ 0F8H
 
+VUMeters_STATUS_UPDATED: equ 7
+
 VUMeters: MACRO
 	player:
 		dw 0
+	status:
+		db 0
 	ENDM
 
 ; de = player
@@ -36,9 +40,12 @@ VUMeters_Tick: PROC
 	push ix
 	call VUMeters_GetPlayer
 	call Player_GetSAARegisters
+	bit Player_STATUS_UPDATED,(ix + Player.status)
+	pop ix
+	ret nz
+	res VUMeters_STATUS_UPDATED,(ix + VUMeters.status)
 	push de
 	pop iy
-	pop ix
 	call VUMeters_GetEnabledChannels
 	ld hl,Graphics_nameTableBuffer + 9 * 32 + 10
 	ld b,6
@@ -124,6 +131,9 @@ Continue:
 
 ; ix = this
 VUMeters_Render:
+	bit VUMeters_STATUS_UPDATED,(ix + VUMeters.status)
+	ret nz
+	set VUMeters_STATUS_UPDATED,(ix + VUMeters.status)
 	ld hl,Graphics_nameTableBuffer + 9 * 32
 	ld de,Graphics_NAME_TABLE + 9 * 32
 	ld bc,4 * 32
