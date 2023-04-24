@@ -1,9 +1,11 @@
 ;
 ; An Etracker module
 ;
-Module: MACRO ?data
+Module: MACRO ?data, ?autoPlayPattern = 0FFH
 	data:
 		dw ?data
+	autoPlayPattern:
+		db ?autoPlayPattern
 	_size:
 	ENDM
 
@@ -15,7 +17,7 @@ Module_playlist:
 	Module Module_electro1_data
 	Module Module_electro3_data
 	Module Module_hubbardsChoice_data
-	Module Module_harlequinTitle_data
+	Module Module_harlequinTitle_data, 0x20
 	Module Module_robLike1_data
 
 	SECTION page2

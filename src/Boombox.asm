@@ -171,6 +171,7 @@ Loop:
 ; ix = this
 Boombox_Tick:
 	call Boombox_TryLoad
+	call Boombox_UpdateAutoPlay
 	push ix
 	ld a,(ix + Boombox.status)
 	and 1 << Boombox_STATUS_WAIT_RESET
@@ -249,6 +250,20 @@ Load:
 	pop ix
 	ret
 	ENDP
+
+; ix = this
+Boombox_UpdateAutoPlay:
+	bit Controls_STATUS_AUTOPLAY,(ix + Boombox.controls.status)
+	ret z
+	bit Player_STATUS_AUTOPLAY,(ix + Boombox.player.status)
+	ret z
+	res Player_STATUS_AUTOPLAY,(ix + Boombox.player.status)
+	ld a,(ix + Boombox.player.loaded)
+	push ix
+	call Boombox_GetControls
+	call Controls_PlayNext
+	pop ix
+	ret
 
 ; ix = this
 ; a <- increment

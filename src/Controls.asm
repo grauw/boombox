@@ -9,6 +9,7 @@ Controls_PATTERN_PLAY: equ 0FCH
 Controls_PATTERN_PAUSE: equ 0FEH
 
 Controls_STATUS_PLAYING: equ 0
+Controls_STATUS_AUTOPLAY: equ 1
 Controls_STATUS_EXIT: equ 6
 Controls_STATUS_UPDATED: equ 7
 
@@ -41,6 +42,7 @@ Controls_Tick:
 
 ; ix = this
 Controls_HandleInput: PROC
+	call Controls_UpdateAutoPlay
 Loop:
 	bit Controls_STATUS_EXIT,(ix + Controls.status)
 	ret nz
@@ -170,6 +172,34 @@ Controls_ToggleFrequency:
 	ret z
 	ld (ix + Controls.frequencyTimer),3 * 50
 	ret
+
+; ix = this
+Controls_UpdateAutoPlay:
+	res Controls_STATUS_AUTOPLAY,(ix + Controls.status)
+	ld a,(CAPST)
+	and a
+	ret z
+	set Controls_STATUS_AUTOPLAY,(ix + Controls.status)
+	ret
+
+; a = current
+; ix = this
+Controls_PlayNext: PROC
+	res Controls_STATUS_UPDATED,(ix + Controls.status)
+	ld b,a
+	inc a
+	cp Controls_TRACKS
+	jr c,NoWrap
+	xor a
+NoWrap:
+	ld (ix + Controls.playing),a
+	ld a,(ix + Controls.selection)
+	cp b
+	ret nz
+	ld a,(ix + Controls.playing)
+	ld (ix + Controls.selection),a
+	ret
+	ENDP
 
 ; ix = this
 Controls_Draw: PROC

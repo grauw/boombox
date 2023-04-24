@@ -10,6 +10,7 @@ Player_FADE_SPEED: equ 08H
 
 Player_STATUS_LOADED: equ 0
 Player_STATUS_PLAYING: equ 1
+Player_STATUS_AUTOPLAY: equ 2
 Player_STATUS_UPDATED: equ 7
 
 Player: MACRO
@@ -27,6 +28,12 @@ Player: MACRO
 		db 0
 	attenuation:
 		db 0
+	pattern:
+		db 0
+	autoPlayPattern:
+		db 0
+	lastSongTable:
+		dw 0
 	saaRegisters:
 		ds Player_SAA_REGISTER_COUNT
 	ENDM
@@ -89,6 +96,8 @@ Player_Load:
 	set Player_STATUS_LOADED,(ix + Player.status)
 	ld (ix + Player.loaded),a
 	call Player_GetModule_IY
+	ld a,(iy + Module.autoPlayPattern)
+	ld (ix + Player.autoPlayPattern),a
 	ld l,(iy + Module.data + 0)
 	ld h,(iy + Module.data + 1)
 	push ix
@@ -103,6 +112,7 @@ Player_Load:
 Player_Unload:
 	res Player_STATUS_LOADED,(ix + Player.status)
 	ld (ix + Player.loaded),-1
+	ld (ix + Player.autoPlayPattern),0FFH
 	ld (ix + Player.module + 0),0
 	ld (ix + Player.module + 1),0
 	jr Player_Initialize
@@ -110,6 +120,10 @@ Player_Unload:
 ; ix = this
 Player_Initialize:
 	res Player_STATUS_UPDATED,(ix + Player.status)
+	res Player_STATUS_AUTOPLAY,(ix + Player.status)
+	ld (ix + Player.pattern),0
+	ld (ix + Player.lastSongTable + 0),0
+	ld (ix + Player.lastSongTable + 1),0
 	ld a,6  ; These do not get reset properly otherwise
 	ld (ETCPlayer_Tick_patternStepTime),a
 	ld a,0
@@ -225,9 +239,46 @@ NoSkip:
 	push ix
 	call ETCPlayer_Tick
 	pop ix
+	call Player_UpdatePattern
 Continue:
 	bit Player_STATUS_UPDATED,(ix + Player.status)
 	call z,Player_CopyRegisters
+	ret
+	ENDP
+
+; ix = this
+Player_UpdatePattern: PROC
+	ld bc,(ETCPlayer_songTable)
+	ld l,(ix + Player.lastSongTable + 0)
+	ld h,(ix + Player.lastSongTable + 1)
+	and a
+	sbc hl,bc
+	ret z
+	add hl,bc
+	ld (ix + Player.lastSongTable + 0),c
+	ld (ix + Player.lastSongTable + 1),b
+	ld a,l
+	or h
+	ret z
+	inc (ix + Player.pattern)
+	jr nz,NoClamp
+	dec (ix + Player.pattern)
+NoClamp:
+	ld a,(ix + Player.autoPlayPattern)
+	cp 0FFH
+	jr nz,NoLoop
+	ld a,(hl)
+	cp 0FFH
+	jr nz,NoLoop
+	ld a,(ix + Player.pattern)
+	inc a
+	ld (ix + Player.autoPlayPattern),a
+	ret
+NoLoop:
+	ld a,(ix + Player.pattern)
+	cp (ix + Player.autoPlayPattern)
+	ret nz
+	set Player_STATUS_AUTOPLAY,(ix + Player.status)
 	ret
 	ENDP
 
