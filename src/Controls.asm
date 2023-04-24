@@ -20,6 +20,8 @@ Controls: MACRO
 		db 0
 	playing:
 		db -1
+	lastJoystick:
+		db 0
 	frequencyTimer:
 		db 0
 	ENDM
@@ -41,7 +43,13 @@ Controls_Tick:
 	ret
 
 ; ix = this
-Controls_HandleInput: PROC
+Controls_HandleInput:
+	call Controls_HandleKeyboardInput
+	call Controls_HandleJoystickInput
+	ret
+
+; ix = this
+Controls_HandleKeyboardInput: PROC
 	call Controls_UpdateAutoPlay
 Loop:
 	bit Controls_STATUS_EXIT,(ix + Controls.status)
@@ -72,6 +80,65 @@ Get:
 	cp 24
 	jp z,Controls_ToggleFrequency
 	ret
+	ENDP
+
+; ix = this
+Controls_HandleJoystickInput: PROC
+	ld a,1
+	call GTSTCK
+	ld hl,mapping
+	ld c,a
+	ld b,0
+	add hl,bc
+	push hl
+	ld a,1
+	call GTTRIG
+	cpl
+	and 00010000B
+	push af
+	ld a,3
+	call GTTRIG
+	cpl
+	and 00100000B
+	pop bc
+	pop hl
+	or b
+	or (hl)
+	push af
+	cpl
+	and (ix + Controls.lastJoystick)
+	jr z,Done
+	res Controls_STATUS_UPDATED,(ix + Controls.status)
+	bit 0,a
+	push af
+	call nz,Controls_Previous
+	pop af
+	bit 1,a
+	push af
+	call nz,Controls_Next
+	pop af
+	bit 2,a
+	push af
+	call nz,Controls_PreviousSide
+	pop af
+	bit 3,a
+	push af
+	call nz,Controls_NextSide
+	pop af
+	bit 4,a
+	push af
+	call nz,Controls_PlayPause
+	pop af
+	bit 5,a
+	push af
+	call nz,Controls_Stop
+	pop af
+Done:
+	pop af
+	ld (ix + Controls.lastJoystick),a
+	ret
+mapping:
+	db 1111B, 1110B, 0110B, 0111B, 0101B, 1101B, 1001B, 1011B, 1010B
 	ENDP
 
 ; ix = this
