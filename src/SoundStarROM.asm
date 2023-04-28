@@ -7,14 +7,11 @@ SoundStar_DATA: equ SoundStar_BASE_PORT + 0
 
 	org 4000H
 
-page1:
-	ds 4000H, 0
-page2:
-	ds 4000H, 0
-	ds 4000H, 0
-	ds 4000H, 0
+page12:
+	ds 8000H, 0
+	ds 8000H, 0
 
-	SECTION page1
+	SECTION page12
 
 	db "AB"
 	dw ROM_Main
@@ -162,5 +159,11 @@ RAM_destination:
 RAM: ds 500H
 RAM_size: equ $ - RAM_destination
 	org RAM_source + RAM_size
+
+	IF $ >= 8000H
+	ERROR "Exceeded page 1."
+	ENDIF
+
+	INCLUDE "ModuleData.asm"
 
 	ENDS

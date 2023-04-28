@@ -320,9 +320,76 @@ class Module {
 	}
 
 	async generate() {
-		let data = this.parse(await fs.promises.readFile(this.source));
+		this.parse(await fs.promises.readFile(this.source));
 
-		await fs.promises.writeFile(this.target, compress(data));
+		this.optimise();
+
+		await fs.promises.writeFile(this.target, compress(this.generateModule()));
+	}
+
+	generateModule() {
+		const moduleData = new Uint8Array(0x4000);
+
+		const writeWord = (address, value) => {
+			moduleData[address] = value & 0xFF;
+			moduleData[address + 1] = value >> 8;
+		}
+
+		let position = 5 * 2;
+
+		const tracksMap = new Map();
+		for (const track of [...this.trackTables.keys()].sort((a, b) => a - b)) {
+			tracksMap.set(track, position);
+			const trackData = this.trackTables.get(track);
+			moduleData.set(trackData, position);
+			position += trackData.length;
+		}
+
+		const ornamentsMap = new Map();
+		for (const ornament of [...this.ornamentTables.keys()].sort((a, b) => a - b)) {
+			ornamentsMap.set(ornament, position);
+			const ornamentData = this.ornamentTables.get(ornament);
+			moduleData.set(ornamentData, position);
+			position += ornamentData.length;
+		}
+
+		const instrumentsMap = new Map();
+		for (const instrument of [...this.instrumentTables.keys()].sort((a, b) => a - b)) {
+			instrumentsMap.set(instrument, position);
+			const instrumentData = this.instrumentTables.get(instrument);
+			moduleData.set(instrumentData, position);
+			position += instrumentData.length;
+		}
+
+		writeWord(0x04, position);
+		for (const instrument of this.instruments) {
+			writeWord(position, instrument ? instrumentsMap.get(instrument) : 0);
+			position += 2;
+		}
+
+		writeWord(0x06, position);
+		for (const ornament of this.ornaments) {
+			writeWord(position, ornament ? ornamentsMap.get(ornament) : 0);
+			position += 2;
+		}
+
+		writeWord(0x08, position);
+		moduleData.set(this.volumeTable, position);
+		position += this.volumeTable.length;
+
+		writeWord(0x00, position);
+		moduleData.set(this.songTable, position);
+		position += this.songTable.length;
+
+		writeWord(0x02, position);
+		for (const pattern of this.patterns) {
+			for (const track of pattern) {
+				writeWord(position, tracksMap.get(track));
+				position += 2;
+			}
+		}
+
+		return moduleData.subarray(0, position);
 	}
 
 	parse(data) {
@@ -333,90 +400,212 @@ class Module {
 		if (data[0x0A] != 0x45 || data[0x0B] != 0x54 || data[0x0C] != 0x72 || data[0x0D] != 0x61 ||
 			data[0x0E] != 0x63 || data[0x0F] != 0x6B || data[0x10] != 0x65 || data[0x11] != 0x72) {
 			throw new Error("Not an ETracker file");
-		} else {
-			data.fill(0, 0x0A, 0x1E);  // Clear ETracker signature
 		}
 
 		this.parseModule(data);
-
-		let dataSize = this.patternTable + this.patternTableSize;
-		if (dataSize > data.length) {
-			throw new Error("File size too small.");
-		} else if (dataSize < data.length) {
-			// console.log(`File size too large by ${data.length - dataSize} byte(s) in ${this.source}`);
-		}
-
-		return data.subarray(0, dataSize);
 	}
 
 	parseModule(data) {
 		const readWord = address => data[address] | data[address + 1] << 8;
 
 		const tables = [readWord(0), readWord(2), readWord(4), readWord(6), readWord(8)];
-		[this.songTable, this.patternTable, this.instrumentTable, this.ornamentTable, ] = tables;
+		const [songTable, patternTable, instrumentTable, ornamentTable, volumeTable] = tables;
 
 		if (tables.some(table => table >= data.length)) {
 			throw new Error("Table address exceeds file length.");
 		}
-		if (tables.some(table => table > this.patternTable)) {
-			throw new Error(`Patterns is not the last table.`);
+		if (instrumentTable >= ornamentTable || ornamentTable >= volumeTable || volumeTable >= songTable || songTable >= patternTable) {
+			throw new Error("Unexpected table order.");
 		}
 
-		this.parseSongTable(data);
-		this.parsePatternTable(data);
+		this.instrumentTable = this.parseInstrumentTable(data.subarray(instrumentTable, ornamentTable));
+		this.ornamentTable = this.parseOrnamentTable(data.subarray(ornamentTable, volumeTable));
+		this.volumeTable = this.parseVolumeTable(data.subarray(volumeTable, songTable));
+		this.songTable = this.parseSongTable(data.subarray(songTable, patternTable));
+		this.patternTable = this.parsePatternTable(data.subarray(patternTable));
+
+		if (0x1E > Math.min(...this.patterns.flat()) ||
+			Math.max(...this.patterns.flat()) >= Math.min(...this.ornaments) ||
+			Math.max(...this.ornaments) >= Math.min(...this.instruments) ||
+			Math.max(...this.instruments) >= instrumentTable) {
+			throw new Error("Unexpected table order.");
+		}
+
+		this.instrumentTables = new Map();
+		const instruments = [...new Set(this.instruments)].sort((a, b) => a - b);
+		for (let i = 0; i < instruments.length; i++) {
+			this.instrumentTables.set(instruments[i],
+				this.parseInstrument(data.subarray(instruments[i], instruments[i + 1] ?? instrumentTable)));
+		}
+
+		this.ornamentTables = new Map();
+		const ornaments = [...new Set(this.ornaments)].sort((a, b) => a - b);
+		for (let i = 0; i < ornaments.length; i++) {
+			this.ornamentTables.set(ornaments[i],
+				this.parseOrnament(data.subarray(ornaments[i], ornaments[i + 1] ?? Math.min(...this.instruments))));
+		}
+
+		this.usedInstruments = new Set();
+		this.usedOrnaments = new Set();
+		this.trackTables = new Map();
+		const tracks = [...new Set(this.patterns.flat())].sort((a, b) => a - b);
+		for (let i = 0; i < tracks.length; i++) {
+			this.trackTables.set(tracks[i],
+				this.parseTrack(data.subarray(tracks[i], tracks[i + 1] ?? Math.min(...this.ornaments))));
+		}
+
+		if (Math.max(...this.usedInstruments) >= this.instruments.length)
+			throw new Error("Instrument index out of bounds.");
+		if (Math.max(...this.usedOrnaments) >= this.ornaments.length)
+			throw new Error("Ornament index out of bounds.");
 	}
 
-	parseSongTable(data) {
+	parseSongTable(songTable) {
 		let maxPattern = -1;
 		let loopPosition = -1;
-		let patternHeight = -1;
-		for (let songPosition = 0; ; songPosition++) {
-			const songCommand = data[this.songTable + songPosition];
+		let patternTranspose = -1;
+		for (let songPosition = 0; songPosition < songTable.length; songPosition++) {
+			const songCommand = songTable[songPosition];
 			if (songCommand == 0xFF) {
-				this.songTableSize = songPosition + 1;
-				break;
+				if (songPosition + 1 < songTable.length)
+					throw new Error("Song table too large.");
+				if (loopPosition < 0)
+					throw new Error("No loop position.");
+				if (patternTranspose < 0)
+					throw new Error("No pattern transpose.");
+				if (maxPattern < 0)
+					throw new Error("No patterns.");
+
+				this.patternCount = maxPattern + 1;
+				return songTable.subarray(0, songPosition + 1);
 			} else if (songCommand == 0xFE) {
 				if (loopPosition != -1)
 					throw new Error("More than one loop position.");
 				loopPosition = songPosition;
 			} else if (songCommand >= 0x60) {
-				if (patternHeight != -1)
-					throw new Error("More than one pattern height.");
-				patternHeight = songCommand - 0x60;
+				patternTranspose = songCommand - 0x60;
 			} else {
 				if (songCommand % 3 != 0)
 					throw new Error("Pattern number is not a multiple of 3.");
 				maxPattern = Math.max(maxPattern, songCommand / 3);
 			}
 		}
-		if (loopPosition < 0)
-			throw new Error("No loop position.");
-		if (patternHeight < 0)
-			throw new Error("No pattern height.");
-		if (maxPattern < 0)
-			throw new Error("No patterns.");
-
-		this.patternCount = maxPattern + 1;
-		this.patternHeight = patternHeight;
+		throw new Error("Song table ended prematurely.");
 	}
 
-	parsePatternTable(data) {
-		const readWord = address => data[address] | data[address + 1] << 8;
+	parseInstrumentTable(instrumentTable) {
+		const readWord = address => instrumentTable[address] | instrumentTable[address + 1] << 8;
+		let emptyInstrument = false;
+		this.instruments = [];
+		for (let instrumentPosition = 0; instrumentPosition < instrumentTable.length; instrumentPosition += 2) {
+			const instrument = readWord(instrumentPosition);
+			if (instrument == 0) {
+				emptyInstrument = true;
+			} else if (emptyInstrument) {
+				throw new Error("Empty instrument between nonempty instruments.");
+			} else {
+				this.instruments.push(instrument);
+			}
+		}
+		return instrumentTable;
+	}
 
-		this.patternTableSize = this.patternCount * 6 * 2;
-		let patternsEnd = this.patternTable + this.patternTableSize;
+	parseOrnamentTable(ornamentTable) {
+		const readWord = address => ornamentTable[address] | ornamentTable[address + 1] << 8;
+		let emptyOrnament = false;
+		this.ornaments = [];
+		for (let ornamentPosition = 0; ornamentPosition < ornamentTable.length; ornamentPosition += 2) {
+			const ornament = readWord(ornamentPosition);
+			if (ornament == 0) {
+				emptyOrnament = true;
+			} else if (emptyOrnament) {
+				throw new Error("Empty ornament between nonempty ornaments.");
+			} else {
+				this.ornaments.push(ornament);
+			}
+		}
+		return ornamentTable;
+	}
+
+	parseVolumeTable(volumeTable) {
+		return volumeTable;
+	}
+
+	parsePatternTable(patternTable) {
+		const readWord = address => patternTable[address] | patternTable[address + 1] << 8;
+
+		// if (this.patternCount * 6 * 2 < patternTable.length)
+		// 	throw new Error("Pattern table too large.");
+		patternTable = patternTable.subarray(0, this.patternCount * 6 * 2);
 
 		this.patterns = [];
 		for (let pattern = 0; pattern < this.patternCount; pattern++) {
 			let tracks = [];
 			for (let track = 0; track < 6; track++) {
-				const trackAddress = readWord(this.patternTable + (pattern * 6 + track) * 2);
-				if (trackAddress >= patternsEnd) {
+				const trackAddress = readWord((pattern * 6 + track) * 2);
+				if (trackAddress >= patternTable) {
 					throw new Error("Track comes after patterns.");
 				}
 				tracks.push(trackAddress);
 			}
 			this.patterns.push(tracks);
+		}
+
+		return patternTable;
+	}
+
+	parseInstrument(instrumentData) {
+		return instrumentData;
+	}
+
+	parseOrnament(ornamentData) {
+		return ornamentData;
+	}
+
+	parseTrack(trackTable) {
+		for (let trackPosition = 0; trackPosition < trackTable.length; trackPosition++) {
+			const trackCommand = trackTable[trackPosition];
+			if (trackCommand == 0x51) {
+				if (trackTable.length > trackPosition + 1)
+					throw new Error("Track table too large.");
+
+				return trackTable.subarray(0, trackPosition + 1);
+			} else if (trackCommand >= 0x52 && trackCommand < 0x72) {
+				this.usedInstruments.add(trackCommand - 0x52);
+			} else if (trackCommand >= 0x30 && trackCommand < 0x50) {
+				this.usedOrnaments.add(trackCommand - 0x30);
+			}
+		}
+		throw new Error("Track table ended prematurely.");
+	}
+
+	optimise() {
+		this.optimiseInstruments();
+		this.optimiseOrnaments();
+	}
+
+	optimiseInstruments() {
+		if (this.usedInstruments.size == this.instruments.length)
+			return;
+
+		for (let i = 0; i < this.instruments.length; i++) {
+			if (!this.usedInstruments.has(i)) {
+				this.instrumentTables.delete(this.instruments[i]);
+				this.instruments[i] = 0;
+			}
+		}
+	}
+
+	optimiseOrnaments() {
+		if (this.usedOrnaments.size == this.ornaments.length)
+			return;
+
+		for (let i = 0; i < this.ornaments.length; i++) {
+			const ornament = this.ornaments[i];
+			if (!this.usedOrnaments.has(ornament)) {
+				this.ornamentTables.delete(ornament);
+				this.ornaments[i] = 0;
+			}
 		}
 	}
 }
