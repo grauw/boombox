@@ -10,6 +10,7 @@ Module: MACRO ?data, ?autoPlayPattern = 0FFH
 	ENDM
 
 Module_playlist:
+	Module Module_vexxIngame_data
 	Module Module_highColor_data
 	Module Module_seventh_data
 	Module Module_electron_data

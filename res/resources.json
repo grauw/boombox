@@ -4,13 +4,18 @@
 			"boombox1.png",
 			"boombox2.png",
 			"boombox3.png",
-			"boombox4.png"
+			"boombox4.png",
+			"boombox5.png"
 		],
 		"reels": "reels.png",
 		"target": "../gen/graphics.lz4",
 		"playlistTarget": "../gen/playlist.lz4"
 	},
 	"modules": [
+		{
+			"source": "Pyramex - Vexx Ingame (2005).etc",
+			"target": "../gen/vexxingame.lz4"
+		},
 		{
 			"source": "Pyramex - High Color (2018) (speccy.pl party 2018.1, 1).cop",
 			"target": "../gen/highcolor.lz4"

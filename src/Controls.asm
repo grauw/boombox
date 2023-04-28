@@ -1,7 +1,7 @@
 ;
 ;
 ;
-Controls_TRACKS: equ 9
+Controls_TRACKS: equ 10
 Controls_SIDES: equ (Controls_TRACKS + 2) / 3
 
 Controls_PATTERN_BLANK: equ 0FFH

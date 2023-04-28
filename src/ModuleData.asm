@@ -1,6 +1,8 @@
 ;
 ;
 ;
+Module_vexxIngame_data:
+	INCBIN "vexxingame.lz4"
 Module_highColor_data:
 	INCBIN "highcolor.lz4"
 Module_seventh_data:
