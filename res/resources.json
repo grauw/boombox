@@ -12,18 +12,6 @@
 	},
 	"modules": [
 		{
-			"source": "Pyramex - Electro-1 (2012).cop",
-			"target": "../gen/electro1.lz4"
-		},
-		{
-			"source": "Pyramex - Electro-3 (2022).saa",
-			"target": "../gen/electro3.lz4"
-		},
-		{
-			"source": "Pyramex - Electron (2018).etc",
-			"target": "../gen/electron.lz4"
-		},
-		{
 			"source": "Pyramex - High Color (2018) (speccy.pl party 2018.1, 1).cop",
 			"target": "../gen/highcolor.lz4"
 		},
@@ -32,20 +20,32 @@
 			"target": "../gen/seventh.lz4"
 		},
 		{
-			"source": "Pyramex - Vexx Ingame (2005).etc",
-			"target": "../gen/vexxingame.lz4"
+			"source": "Pyramex - Electron (2018).etc",
+			"target": "../gen/electron.lz4"
+		},
+		{
+			"source": "Pyramex - Electro-1 (2012).cop",
+			"target": "../gen/electro1.lz4"
+		},
+		{
+			"source": "Pyramex - Electro-3 (2022).saa",
+			"target": "../gen/electro3.lz4"
 		},
 		{
 			"source": "Pyramex - Hubbard's Choice (2010).saa",
 			"target": "../gen/hubbardschoice.lz4"
 		},
 		{
-			"source": "Pyramex - Harlequin - Title Music (2009).saa",
-			"target": "../gen/harlequintitle.lz4"
+			"source": "Pyramex - About As SID As It's Going To Get (2009).cop",
+			"target": "../gen/assidasitgets.lz4"
 		},
 		{
 			"source": "Pyramex - RobLike-1 (2014).cop",
 			"target": "../gen/roblike1.lz4"
+		},
+		{
+			"source": "Pyramex - Harlequin - Title Music (2009).saa",
+			"target": "../gen/harlequintitle.lz4"
 		}
 	]
 }
