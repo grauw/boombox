@@ -107,3 +107,35 @@ Found:
 	scf
 	ret
 	ENDP
+
+; Match a string in a slot.
+; a = slot
+; bc = string length
+; de = string
+; hl = address
+; f <- c: found
+; Modifies: f, bc, de, hl
+Memory_MatchSlotString: PROC
+	push af
+	push bc
+	push de
+	call RDSLT
+	pop de
+	pop bc
+	ex de,hl
+	cpi
+	jr nz,NotFound
+	jp po,Found
+	inc de
+	ex de,hl
+	pop af
+	jp Memory_MatchSlotString
+Found:
+	pop af
+	scf
+	ret
+NotFound:
+	pop af
+	and a
+	ret
+	ENDP

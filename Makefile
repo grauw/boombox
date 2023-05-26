@@ -4,6 +4,7 @@ all:
 	mkdir -p gen bin
 	node tools/generate.js res/resources.json
 	java -jar tools/glass.jar -I gen src/SoundStarROM.asm bin/soundstar.rom gen/soundstar.sym
+	java -jar tools/glass.jar -I gen src/BoomboxROM.asm bin/boombox.rom gen/boombox.sym
 	java -jar tools/glass.jar src/ETCPlayerSAA.asm bin/etcplayer.saa
 
 dist: all
@@ -17,7 +18,7 @@ copy: all
 	diskutil umount $(COPY_TARGET)
 
 run: all
-	openmsx -machine Panasonic_FS-A1GT -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl
+	openmsx -machine Panasonic_FS-A1GT -ext slotexpander -ext SoundStar -cart bin/boombox.rom -ext ide -script openmsx.tcl
 
 run2: all
 	openmsx -machine Philips_VG_8020 -ext slotexpander -ext SoundStar -cart bin/soundstar.rom -ext ide -script openmsx.tcl
