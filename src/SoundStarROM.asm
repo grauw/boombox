@@ -19,7 +19,7 @@ page12:
 	dw 0, 0, 0, 0, 0
 
 	db "SAA1099", 0  ; ID
-	db 01H, 01H      ; Version (major, minor)
+	db 01H, 02H      ; Version (major, minor)
 	db "SuperSoniqs SoundStar", 0
 
 ROM_Main:
