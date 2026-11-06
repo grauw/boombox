@@ -14,7 +14,7 @@ SoundStar Boombox firmware ROM.
 
   * Author: Laurens Holst <laurens@grauw.nl>
   * Site: <https://shop.supersoniqs.com/en/home/106-soundstar.html>
-  * Source: <https://hg.sr.ht/~grauw/soundstar>
+  * Source: <https://github.com/grauw/boombox>
   * License: Simplified BSD License (code, art), No License (music)
 
 The firmware serves three purposes; to allow for detection of the SoundStar,
@@ -72,9 +72,9 @@ section.
 You are also free to re-use code for your own projects, provided you abide by
 the license terms.
 
-Clone the project with Mercurial:
+Clone the project with Git:
 
-    hg clone https://hg.sr.ht/~grauw/tiletile
+    git clone https://github.com/grauw/boombox.git
 
 Building the project is easy on all modern desktop platforms. On MacOS and
 Linux, simply invoke `make` to build the binary and symbol files into the `bin`

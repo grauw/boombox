@@ -5,8 +5,8 @@
   "author": "Laurens Holst",
   "license": "BSD-2-Clause",
   "repository": {
-    "type": "hg",
-    "url": "https://hg.sr.ht/~grauw/soundstar"
+    "type": "git",
+    "url": "git+https://github.com/grauw/boombox.git"
   },
   "type": "module",
   "dependencies": {
